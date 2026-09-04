@@ -1,28 +1,28 @@
 # db/models/business.py
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
-from acme_ops_shared.common.enums import (
-    CustomerHealthEnum,
-    CustomerTierEnum,
-    IssuePriorityEnum,
-    IssueStatusEnum,
-    NextActionStatusEnum,
-    NextActionTypeEnum,
-    enum_values,
-)
 from acme_ops_shared.db.base import Base
-from sqlalchemy import Boolean, DateTime
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import ForeignKey, Index, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
 class Customer(Base):
     """
-    Represents a Customer Model in the system.
+    Represents a customer for the NatWest investigation domain.
     """
 
     __tablename__ = "customers"
@@ -32,41 +32,47 @@ class Customer(Base):
         primary_key=True,
         default=uuid.uuid4,
     )
-    name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
-    industry: Mapped[str | None] = mapped_column(String(100), nullable=True)
-
-    tier: Mapped[CustomerTierEnum] = mapped_column(
+    full_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    date_of_birth: Mapped[date] = mapped_column(Date, nullable=False)
+    primary_account_number: Mapped[str] = mapped_column(
+        String(20), unique=True, nullable=False
+    )
+    primary_sort_code: Mapped[str] = mapped_column(String(10), nullable=False)
+    kyc_status: Mapped[str] = mapped_column(
         SAEnum(
-            CustomerTierEnum,
-            name="customer_tier",
-            values_callable=enum_values,
+            "verified",
+            "pending_review",
+            "expired",
+            "not_started",
+            name="kyc_status",
         ),
         nullable=False,
+        default="not_started",
     )
-
-    account_owner_user_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("app_users.id", ondelete="SET NULL"),
-        nullable=True,
-    )
-
-    contract_value: Mapped[Decimal | None] = mapped_column(
-        Numeric(12, 2),
-        nullable=True,
-    )
-
-    health_status: Mapped[CustomerHealthEnum] = mapped_column(
-        SAEnum(
-            CustomerHealthEnum,
-            name="customer_health",
-            values_callable=enum_values,
-        ),
-        nullable=False,
-    )
-
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    deleted_at: Mapped[datetime | None] = mapped_column(
+    kyc_last_reviewed: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    vulnerability_flag: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )
+    vulnerability_type: Mapped[str | None] = mapped_column(
+        SAEnum(
+            "health",
+            "life_event",
+            "resilience",
+            "capability",
+            name="vulnerability_type",
+        ),
+        nullable=True,
+    )
+    vulnerability_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    customer_since: Mapped[date] = mapped_column(Date, nullable=False)
+    tier: Mapped[str] = mapped_column(
+        SAEnum("standard", "premium", "private_banking", name="customer_tier"),
+        nullable=False,
+        default="standard",
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -78,21 +84,78 @@ class Customer(Base):
         nullable=False,
     )
 
-    issues: Mapped[list["Issue"]] = relationship(back_populates="customer")
+    accounts: Mapped[list["Account"]] = relationship(back_populates="customer")
+    cases: Mapped[list["Issue"]] = relationship(back_populates="customer")
 
     __table_args__ = (
-        Index("ix_customers_name", "name"),
-        Index("ix_customers_health_status", "health_status"),
-        Index("ix_customers_deleted_at", "deleted_at"),
+        Index("ix_customers_full_name", "full_name"),
+        Index("ix_customers_kyc_status", "kyc_status"),
+        Index("ix_customers_primary_account_number", "primary_account_number"),
+    )
+
+
+class Account(Base):
+    """
+    Represents an account tied to a customer.
+    """
+
+    __tablename__ = "accounts"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    customer_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("customers.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    account_number: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
+    sort_code: Mapped[str] = mapped_column(String(10), nullable=False)
+    account_type: Mapped[str] = mapped_column(
+        SAEnum(
+            "current",
+            "savings",
+            "isa",
+            "business",
+            "loan",
+            "credit_card",
+            name="account_type",
+        ),
+        nullable=False,
+    )
+    balance: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    status: Mapped[str] = mapped_column(
+        SAEnum("active", "frozen", "closed", "restricted", name="account_status"),
+        nullable=False,
+        default="active",
+    )
+    opened_date: Mapped[date] = mapped_column(Date, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    customer: Mapped[Customer] = relationship(back_populates="accounts")
+
+    __table_args__ = (
+        Index("ix_accounts_customer_id", "customer_id"),
+        Index("ix_accounts_status", "status"),
     )
 
 
 class Issue(Base):
     """
-    Represents an Issue Model in the system.
+    Represents a case in the NatWest investigation workflow.
     """
 
-    __tablename__ = "issues"
+    __tablename__ = "cases"
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -104,119 +167,132 @@ class Issue(Base):
         ForeignKey("customers.id", ondelete="RESTRICT"),
         nullable=False,
     )
-    external_ref: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
-    title: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-    status: Mapped[IssueStatusEnum] = mapped_column(
+    case_ref: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
+    case_type: Mapped[str] = mapped_column(
         SAEnum(
-            IssueStatusEnum,
-            name="issue_status",
-            values_callable=enum_values,
+            "dispute",
+            "fraud",
+            "complaint",
+            "kyc_review",
+            "vulnerability_review",
+            name="case_type",
         ),
         nullable=False,
     )
-
-    priority: Mapped[IssuePriorityEnum] = mapped_column(
+    status: Mapped[str] = mapped_column(
         SAEnum(
-            IssuePriorityEnum,
-            name="issue_priority",
-            values_callable=enum_values,
+            "open",
+            "under_investigation",
+            "pending_customer",
+            "escalated",
+            "resolved",
+            "closed",
+            name="case_status",
         ),
         nullable=False,
+        default="open",
     )
-
-    assigned_to_user_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("app_users.id", ondelete="SET NULL"),
-        nullable=True,
-    )
-
-    source_system: Mapped[str] = mapped_column(
-        String(100),
+    priority: Mapped[str] = mapped_column(
+        SAEnum("p1", "p2", "p3", "p4", name="case_priority"),
         nullable=False,
-        default="natwest-support",
+        default="p3",
     )
-
-    opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    due_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    resolved_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-
-    deleted_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
+    opened_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_updated: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
     )
+    assigned_team: Mapped[str] = mapped_column(
+        SAEnum("customer_support", "fraud", "compliance", name="assigned_team"),
+        nullable=False,
+        default="customer_support",
+    )
+    assigned_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("app_users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    disputed_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    merchant_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    merchant_category: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    consumer_duty_flag: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
-    customer: Mapped[Customer] = relationship(back_populates="issues")
-    updates: Mapped[list["IssueUpdate"]] = relationship(back_populates="issue")
-    next_actions: Mapped[list["NextAction"]] = relationship(back_populates="issue")
+    customer: Mapped[Customer] = relationship(back_populates="cases")
+    events: Mapped[list["IssueUpdate"]] = relationship(back_populates="case")
+    next_actions: Mapped[list["NextAction"]] = relationship(back_populates="case")
 
     __table_args__ = (
-        Index("ix_issues_customer_id", "customer_id"),
-        Index("ix_issues_status", "status"),
-        Index("ix_issues_priority", "priority"),
-        Index("ix_issues_customer_id_status", "customer_id", "status"),
-        Index("ix_issues_assigned_to_user_id", "assigned_to_user_id"),
-        Index("ix_issues_deleted_at", "deleted_at"),
+        Index("ix_cases_customer_id", "customer_id"),
+        Index("ix_cases_case_ref", "case_ref"),
+        Index("ix_cases_status", "status"),
+        Index("ix_cases_priority", "priority"),
+        Index("ix_cases_assigned_user_id", "assigned_user_id"),
     )
 
 
 class IssueUpdate(Base):
     """
-    Represents an Issue Update Model in the system.
+    Represents a case event in the NatWest investigation domain.
     """
 
-    __tablename__ = "issue_updates"
+    __tablename__ = "case_events"
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
     )
-    issue_id: Mapped[uuid.UUID] = mapped_column(
+    case_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("issues.id", ondelete="CASCADE"),
+        ForeignKey("cases.id", ondelete="CASCADE"),
         nullable=False,
     )
-    author_user_id: Mapped[uuid.UUID | None] = mapped_column(
+    event_type: Mapped[str] = mapped_column(
+        SAEnum(
+            "note",
+            "status_change",
+            "escalation",
+            "customer_contact",
+            "document_received",
+            "system_alert",
+            name="case_event_type",
+        ),
+        nullable=False,
+    )
+    event_description: Mapped[str] = mapped_column(Text, nullable=False)
+    is_internal: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("app_users.id", ondelete="SET NULL"),
         nullable=True,
     )
-    author_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    author_role: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    update_text: Mapped[str] = mapped_column(Text, nullable=False)
-    is_customer_visible: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=True
-    )
+    created_by_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_by_role: Mapped[str | None] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
-    issue: Mapped[Issue] = relationship(back_populates="updates")
+    case: Mapped[Issue] = relationship(back_populates="events")
 
     __table_args__ = (
-        Index("ix_issue_updates_issue_id", "issue_id"),
-        Index("ix_issue_updates_issue_id_created_at", "issue_id", created_at.desc()),
-        Index("ix_issue_updates_author_user_id", "author_user_id"),
+        Index("ix_case_events_case_id", "case_id"),
+        Index("ix_case_events_created_by_user_id", "created_by_user_id"),
     )
 
 
 class NextAction(Base):
     """
-    Represents a Next Action Model in the system.
+    Represents the next action for a NatWest case.
     """
 
     __tablename__ = "next_actions"
@@ -226,36 +302,41 @@ class NextAction(Base):
         primary_key=True,
         default=uuid.uuid4,
     )
-    issue_id: Mapped[uuid.UUID] = mapped_column(
+    case_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("issues.id", ondelete="CASCADE"),
+        ForeignKey("cases.id", ondelete="CASCADE"),
         nullable=False,
     )
-    action_type: Mapped[NextActionTypeEnum] = mapped_column(
+    action_type: Mapped[str] = mapped_column(
         SAEnum(
-            NextActionTypeEnum,
+            "contact_customer",
+            "request_documents",
+            "issue_refund",
+            "escalate_fraud",
+            "escalate_vulnerability",
+            "kyc_refresh",
+            "add_case_note",
             name="next_action_type",
-            values_callable=enum_values,
         ),
         nullable=False,
     )
-    action_text: Mapped[str] = mapped_column(Text, nullable=False)
-    owner_user_id: Mapped[uuid.UUID | None] = mapped_column(
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    due_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(
+        SAEnum(
+            "open",
+            "in_progress",
+            "completed",
+            "overdue",
+            name="next_action_status",
+        ),
+        nullable=False,
+        default="open",
+    )
+    assigned_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("app_users.id", ondelete="SET NULL"),
         nullable=True,
-    )
-    due_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    status: Mapped[NextActionStatusEnum] = mapped_column(
-        SAEnum(
-            NextActionStatusEnum,
-            name="next_action_status",
-            values_callable=enum_values,
-        ),
-        nullable=False,
-        default=NextActionStatusEnum.OPEN,
     )
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
@@ -269,19 +350,12 @@ class NextAction(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-    )
 
-    issue: Mapped[Issue] = relationship(back_populates="next_actions")
+    case: Mapped[Issue] = relationship(back_populates="next_actions")
 
     __table_args__ = (
-        Index("ix_next_actions_issue_id", "issue_id"),
+        Index("ix_next_actions_case_id", "case_id"),
+        Index("ix_next_actions_due_date", "due_date"),
         Index("ix_next_actions_status", "status"),
-        Index("ix_next_actions_owner_user_id", "owner_user_id"),
-        Index("ix_next_actions_created_by_user_id", "created_by_user_id"),
-        Index("ix_next_actions_due_at", "due_at"),
+        Index("ix_next_actions_assigned_user_id", "assigned_user_id"),
     )
