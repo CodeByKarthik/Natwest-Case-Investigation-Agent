@@ -85,7 +85,7 @@ class Customer(Base):
     )
 
     accounts: Mapped[list["Account"]] = relationship(back_populates="customer")
-    cases: Mapped[list["Issue"]] = relationship(back_populates="customer")
+    cases: Mapped[list["Case"]] = relationship(back_populates="customer")
 
     __table_args__ = (
         Index("ix_customers_full_name", "full_name"),
@@ -117,17 +117,16 @@ class Account(Base):
         SAEnum(
             "current",
             "savings",
-            "isa",
-            "business",
-            "loan",
             "credit_card",
+            "mortgage",
+            "loan",
             name="account_type",
         ),
         nullable=False,
     )
     balance: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     status: Mapped[str] = mapped_column(
-        SAEnum("active", "frozen", "closed", "restricted", name="account_status"),
+        SAEnum("active", "dormant", "closed", "frozen", name="account_status"),
         nullable=False,
         default="active",
     )
@@ -150,7 +149,7 @@ class Account(Base):
     )
 
 
-class Issue(Base):
+class Case(Base):
     """
     Represents a case in the NatWest investigation workflow.
     """
@@ -197,7 +196,9 @@ class Issue(Base):
         nullable=False,
         default="p3",
     )
-    opened_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    opened_date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     last_updated: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -214,7 +215,9 @@ class Issue(Base):
         ForeignKey("app_users.id", ondelete="SET NULL"),
         nullable=True,
     )
-    disputed_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    disputed_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2), nullable=True
+    )
     merchant_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     merchant_category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     consumer_duty_flag: Mapped[bool] = mapped_column(
@@ -228,7 +231,7 @@ class Issue(Base):
     )
 
     customer: Mapped[Customer] = relationship(back_populates="cases")
-    events: Mapped[list["IssueUpdate"]] = relationship(back_populates="case")
+    events: Mapped[list["CaseEvent"]] = relationship(back_populates="case")
     next_actions: Mapped[list["NextAction"]] = relationship(back_populates="case")
 
     __table_args__ = (
@@ -240,7 +243,7 @@ class Issue(Base):
     )
 
 
-class IssueUpdate(Base):
+class CaseEvent(Base):
     """
     Represents a case event in the NatWest investigation domain.
     """
@@ -282,7 +285,7 @@ class IssueUpdate(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
-    case: Mapped[Issue] = relationship(back_populates="events")
+    case: Mapped[Case] = relationship(back_populates="events")
 
     __table_args__ = (
         Index("ix_case_events_case_id", "case_id"),
@@ -351,7 +354,7 @@ class NextAction(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
-    case: Mapped[Issue] = relationship(back_populates="next_actions")
+    case: Mapped[Case] = relationship(back_populates="next_actions")
 
     __table_args__ = (
         Index("ix_next_actions_case_id", "case_id"),

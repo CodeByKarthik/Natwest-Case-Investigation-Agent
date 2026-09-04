@@ -5,7 +5,13 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from natwest_shared.db.models.business import Account, Customer, Issue, IssueUpdate, NextAction
+from natwest_shared.db.models.business import (
+    Account,
+    Case,
+    CaseEvent,
+    Customer,
+    NextAction,
+)
 from natwest_shared.db.models.user import AppUser
 from natwest_shared.db.session import SessionLocal
 
@@ -37,7 +43,9 @@ def get_or_create_customer(
     tier: str,
 ) -> Customer:
     existing = session.scalar(
-        select(Customer).where(Customer.primary_account_number == primary_account_number)
+        select(Customer).where(
+            Customer.primary_account_number == primary_account_number
+        )
     )
 
     if existing is not None:
@@ -72,7 +80,9 @@ def get_or_create_account(
     status: str,
     opened_date: date,
 ) -> Account:
-    existing = session.scalar(select(Account).where(Account.account_number == account_number))
+    existing = session.scalar(
+        select(Account).where(Account.account_number == account_number)
+    )
 
     if existing is not None:
         return existing
@@ -108,13 +118,13 @@ def get_or_create_case(
     merchant_category: str | None,
     consumer_duty_flag: bool,
     description: str,
-) -> Issue:
-    existing = session.scalar(select(Issue).where(Issue.case_ref == case_ref))
+) -> Case:
+    existing = session.scalar(select(Case).where(Case.case_ref == case_ref))
 
     if existing is not None:
         return existing
 
-    case = Issue(
+    case = Case(
         customer_id=customer_id,
         case_ref=case_ref,
         case_type=case_type,
@@ -148,9 +158,9 @@ def add_case_event_if_missing(
     created_at: datetime,
 ) -> None:
     existing = session.scalar(
-        select(IssueUpdate).where(
-            IssueUpdate.case_id == case_id,
-            IssueUpdate.event_description == event_description,
+        select(CaseEvent).where(
+            CaseEvent.case_id == case_id,
+            CaseEvent.event_description == event_description,
         )
     )
 
@@ -158,7 +168,7 @@ def add_case_event_if_missing(
         return
 
     session.add(
-        IssueUpdate(
+        CaseEvent(
             case_id=case_id,
             event_type=event_type,
             event_description=event_description,

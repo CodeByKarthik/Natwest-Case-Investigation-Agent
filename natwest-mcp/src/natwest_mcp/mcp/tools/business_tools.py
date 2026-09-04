@@ -1,204 +1,128 @@
-from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
 from fastmcp.dependencies import Depends
 from fastmcp.exceptions import ToolError
-from pydantic import Field
-
-from natwest_mcp.mcp.dependencies import get_business_service
-from natwest_shared.common.enums import (
-    IssueStatusEnum,
-    NextActionStatusEnum,
-    NextActionTypeEnum,
-)
 from natwest_shared.schema.business_schema import (
+    AccountRead,
+    CaseEventRead,
+    CaseRead,
     CustomerRead,
-    IssueRead,
-    IssueUpdateRead,
     NextActionRead,
 )
 from natwest_shared.services.business_service import BusinessService
+from pydantic import Field
+
+from natwest_mcp.mcp.dependencies import get_business_service
 
 
-async def list_customers(
-    limit: Annotated[int, Field(ge=1, le=100)] = 50,
-    offset: Annotated[int, Field(ge=0)] = 0,
-    service: BusinessService = Depends(get_business_service),
-) -> list[CustomerRead]:
-    """List customers visible to the authenticated user."""
-    customers = service.list_customers(limit=limit, offset=offset)
-    return [CustomerRead.model_validate(customer) for customer in customers]
-
-
-async def get_customer_by_name(
-    name: Annotated[str, Field(min_length=1, max_length=255)],
-    service: BusinessService = Depends(get_business_service),
-) -> CustomerRead | None:
-    """Find a customer by partial name match."""
-    customer = service.get_customer_by_name(name=name)
-
-    if customer is None:
-        return None
-
-    return CustomerRead.model_validate(customer)
-
-
-async def list_open_issues(
+async def get_customer_profile(
     customer_id: UUID,
+    *,
+    service: Annotated[BusinessService, Depends(get_business_service)],
+) -> CustomerRead | None:
+    """Fetch the full customer profile for a customer identifier."""
+    customer = service.get_customer_profile(customer_id=customer_id)
+    return None if customer is None else CustomerRead.model_validate(customer)
+
+
+async def get_customer_accounts(
+    customer_id: UUID,
+    *,
+    service: Annotated[BusinessService, Depends(get_business_service)],
+) -> list[AccountRead]:
+    """List all accounts held by a customer."""
+    accounts = service.get_customer_accounts(customer_id=customer_id)
+    return [AccountRead.model_validate(account) for account in accounts]
+
+
+async def list_cases(
+    status: str | None = None,
+    priority: str | None = None,
+    assigned_team: str | None = None,
+    assigned_user_id: UUID | None = None,
+    case_type: str | None = None,
+    customer_id: UUID | None = None,
+    consumer_duty_flag: bool | None = None,
     limit: Annotated[int, Field(ge=1, le=100)] = 50,
     offset: Annotated[int, Field(ge=0)] = 0,
-    service: BusinessService = Depends(get_business_service),
-) -> list[IssueRead]:
-    """List open, in-progress, or blocked issues for a customer."""
-    issues = service.list_open_issues(
+    *,
+    service: Annotated[BusinessService, Depends(get_business_service)],
+) -> list[CaseRead]:
+    """List NatWest investigation cases matching the provided filters."""
+    cases = service.list_cases(
+        status=status,
+        priority=priority,
+        assigned_team=assigned_team,
+        assigned_user_id=assigned_user_id,
+        case_type=case_type,
         customer_id=customer_id,
+        consumer_duty_flag=consumer_duty_flag,
         limit=limit,
         offset=offset,
     )
-
-    return [IssueRead.model_validate(issue) for issue in issues]
-
-
-async def get_issue_by_external_ref(
-    external_ref: Annotated[str, Field(min_length=1, max_length=50)],
-    service: BusinessService = Depends(get_business_service),
-) -> IssueRead | None:
-    """Find an issue by external reference such as ISSUE-101."""
-    issue = service.get_issue_by_external_ref(
-        external_ref=external_ref,
-    )
-
-    if issue is None:
-        return None
-
-    return IssueRead.model_validate(issue)
+    return [CaseRead.model_validate(case) for case in cases]
 
 
-async def list_issue_updates(
-    issue_id: UUID,
-    customer_visible_only: bool = False,
-    limit: Annotated[int, Field(ge=1, le=100)] = 50,
-    offset: Annotated[int, Field(ge=0)] = 0,
-    service: BusinessService = Depends(get_business_service),
-) -> list[IssueUpdateRead]:
-    """List updates for an issue, newest first."""
-    updates = service.list_issue_updates(
-        issue_id=issue_id,
-        customer_visible_only=customer_visible_only,
-        limit=limit,
-        offset=offset,
-    )
-
-    return [IssueUpdateRead.model_validate(update) for update in updates]
+async def get_case_details(
+    case_id: UUID | None = None,
+    case_ref: str | None = None,
+    *,
+    service: Annotated[BusinessService, Depends(get_business_service)],
+) -> CaseRead | None:
+    """Load the full details for a single case by ID or case reference."""
+    if case_id is None and case_ref is None:
+        raise ToolError("Either case_id or case_ref must be provided")
+    case = service.get_case_details(case_id=case_id, case_ref=case_ref)
+    return None if case is None else CaseRead.model_validate(case)
 
 
-async def list_next_actions(
-    issue_id: UUID,
-    status: NextActionStatusEnum | None = None,
-    limit: Annotated[int, Field(ge=1, le=100)] = 50,
-    offset: Annotated[int, Field(ge=0)] = 0,
-    service: BusinessService = Depends(get_business_service),
+async def get_case_timeline(
+    case_id: UUID,
+    *,
+    service: Annotated[BusinessService, Depends(get_business_service)],
+) -> list[CaseEventRead]:
+    """Retrieve the timeline for a case."""
+    timeline = service.get_case_timeline(case_id=case_id)
+    return [CaseEventRead.model_validate(entry) for entry in timeline]
+
+
+async def get_next_actions(
+    case_id: UUID,
+    *,
+    service: Annotated[BusinessService, Depends(get_business_service)],
 ) -> list[NextActionRead]:
-    """List next actions for an issue."""
-    next_actions = service.list_next_actions(
-        issue_id=issue_id,
-        status=status,
-        limit=limit,
-        offset=offset,
+    """Fetch the next actions associated with a case."""
+    actions = service.get_next_actions(case_id=case_id)
+    return [NextActionRead.model_validate(action) for action in actions]
+
+
+async def update_case_status(
+    case_id: UUID,
+    new_status: str,
+    reason: str,
+    *,
+    service: Annotated[BusinessService, Depends(get_business_service)],
+) -> CaseRead:
+    """Update the lifecycle status of a case."""
+    case = service.update_case_status(
+        case_id=case_id, new_status=new_status, reason=reason
     )
+    if case is None:
+        raise ToolError("Case not found")
+    return CaseRead.model_validate(case)
 
-    return [NextActionRead.model_validate(action) for action in next_actions]
 
-
-async def update_issue_status(
-    issue_id: UUID,
-    status: IssueStatusEnum,
-    service: BusinessService = Depends(get_business_service),
-) -> IssueRead:
-    """Update an issue status. Requires support_user or admin."""
-    issue = service.update_issue_status(
-        issue_id=issue_id,
-        status=status,
+async def manage_next_action(
+    operation: str,
+    case_id: UUID | None = None,
+    action_id: UUID | None = None,
+    fields: dict[str, object] | None = None,
+    *,
+    service: Annotated[BusinessService, Depends(get_business_service)],
+) -> NextActionRead | None:
+    """Create, update, or complete a case next action."""
+    action = service.manage_next_action(
+        operation=operation, case_id=case_id, action_id=action_id, fields=fields
     )
-
-    if issue is None:
-        raise ToolError("Issue not found")
-
-    return IssueRead.model_validate(issue)
-
-
-async def add_issue_update(
-    issue_id: UUID,
-    update_text: Annotated[str, Field(min_length=1, max_length=8000)],
-    is_customer_visible: bool = True,
-    service: BusinessService = Depends(get_business_service),
-) -> IssueUpdateRead:
-    """Add a progress update to an issue. Requires support_user or admin."""
-    issue_update = service.add_issue_update(
-        issue_id=issue_id,
-        update_text=update_text,
-        is_customer_visible=is_customer_visible,
-    )
-
-    return IssueUpdateRead.model_validate(issue_update)
-
-
-async def create_next_action(
-    issue_id: UUID,
-    action_type: NextActionTypeEnum,
-    action_text: Annotated[str, Field(min_length=1, max_length=8000)],
-    owner_user_id: UUID | None = None,
-    due_at: datetime | None = None,
-    service: BusinessService = Depends(get_business_service),
-) -> NextActionRead:
-    """Create a next action for an issue. Requires admin."""
-    next_action = service.create_next_action(
-        issue_id=issue_id,
-        action_type=action_type,
-        action_text=action_text,
-        owner_user_id=owner_user_id,
-        due_at=due_at,
-    )
-
-    return NextActionRead.model_validate(next_action)
-
-
-async def update_next_action(
-    next_action_id: UUID,
-    action_type: NextActionTypeEnum | None = None,
-    action_text: Annotated[str | None, Field(max_length=8000)] = None,
-    owner_user_id: UUID | None = None,
-    due_at: datetime | None = None,
-    status: NextActionStatusEnum | None = None,
-    service: BusinessService = Depends(get_business_service),
-) -> NextActionRead:
-    """Update next action fields. Requires admin."""
-    next_action = service.update_next_action(
-        next_action_id=next_action_id,
-        action_type=action_type,
-        action_text=action_text,
-        owner_user_id=owner_user_id,
-        due_at=due_at,
-        status=status,
-    )
-
-    if next_action is None:
-        raise ToolError("Next action not found")
-
-    return NextActionRead.model_validate(next_action)
-
-
-async def complete_next_action(
-    next_action_id: UUID,
-    service: BusinessService = Depends(get_business_service),
-) -> NextActionRead:
-    """Mark a next action as completed. Requires admin."""
-    next_action = service.complete_next_action(
-        next_action_id=next_action_id,
-    )
-
-    if next_action is None:
-        raise ToolError("Next action not found")
-
-    return NextActionRead.model_validate(next_action)
+    return None if action is None else NextActionRead.model_validate(action)

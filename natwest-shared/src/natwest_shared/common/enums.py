@@ -36,20 +36,20 @@ class CustomerHealthEnum(StrEnum):
     CRITICAL = "critical"
 
 
-class IssueStatusEnum(StrEnum):
+class CaseStatusEnum(StrEnum):
     """
-    Enum representing the status of an issue
-    in the system.
+    Enum representing the status values allowed on a NatWest case.
     """
 
     OPEN = "open"
-    IN_PROGRESS = "in_progress"
-    BLOCKED = "blocked"
+    UNDER_INVESTIGATION = "under_investigation"
+    PENDING_CUSTOMER = "pending_customer"
+    ESCALATED = "escalated"
     RESOLVED = "resolved"
     CLOSED = "closed"
 
 
-class IssuePriorityEnum(StrEnum):
+class CasePriorityEnum(StrEnum):
     """
     Enum representing the priority levels of an issue
     to help with resolution.
@@ -67,6 +67,13 @@ class NextActionTypeEnum(StrEnum):
     be taken for an issue or customer interaction.
     """
 
+    CONTACT_CUSTOMER = "contact_customer"
+    REQUEST_DOCUMENTS = "request_documents"
+    ISSUE_REFUND = "issue_refund"
+    ESCALATE_FRAUD = "escalate_fraud"
+    ESCALATE_VULNERABILITY = "escalate_vulnerability"
+    KYC_REFRESH = "kyc_refresh"
+    ADD_CASE_NOTE = "add_case_note"
     CUSTOMER_UPDATE = "customer_update"
     TECHNICAL_INVESTIGATION = "technical_investigation"
     WORKAROUND_CONFIRMATION = "workaround_confirmation"
