@@ -1,28 +1,28 @@
 {
-  "realm": "acme",
+  "realm": "natwest",
   "enabled": true,
   "sslRequired": "none",
-  "displayName": "Acme Operations",
+  "displayName": "NatWest Case Investigation",
   "roles": {
     "realm": [
       {
-        "name": "sales_user",
-        "description": "Read-only access to customer and issue data"
+        "name": "customer_support",
+        "description": "Handles initial customer contact and routine queries. Read-only access to support-visible cases. Cannot see internal notes or fraud cases."
       },
       {
-        "name": "support_user",
-        "description": "Read and update access for support issues"
+        "name": "fraud_investigator",
+        "description": "Investigates disputed transactions and suspected scams. Can update status on fraud and dispute cases. Cannot manage next actions or modify compliance records."
       },
       {
-        "name": "admin",
-        "description": "Full administrative access"
+        "name": "compliance_officer",
+        "description": "Oversees case quality, vulnerability handling, and regulatory reporting. Full access to all cases, events, and write operations."
       }
     ]
   },
   "clients": [
     {
-      "clientId": "acme-agent-api",
-      "name": "Acme Agent API",
+      "clientId": "natwest-agent-api",
+      "name": "NatWest Agent API",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
@@ -68,49 +68,49 @@
   ],
   "users": [
     {
-      "username": "sales1",
+      "username": "customer_support",
       "enabled": true,
-      "email": "sales1@acme.local",
-      "firstName": "Sales",
-      "lastName": "User",
+      "email": "customer_support@natwest.local",
+      "firstName": "Customer",
+      "lastName": "Support",
       "credentials": [
         {
           "type": "password",
-          "value": "SalesPass123",
+          "value": "support_pass123",
           "temporary": false
         }
       ],
-      "realmRoles": ["sales_user"]
+      "realmRoles": ["customer_support"]
     },
     {
-      "username": "support1",
+      "username": "fraud_investigator",
       "enabled": true,
-      "email": "support1@acme.local",
-      "firstName": "Support",
-      "lastName": "User",
+      "email": "fraud_investigator@natwest.local",
+      "firstName": "Fraud",
+      "lastName": "Investigator",
       "credentials": [
         {
           "type": "password",
-          "value": "SupportPass123",
+          "value": "investigator_pass123",
           "temporary": false
         }
       ],
-      "realmRoles": ["support_user"]
+      "realmRoles": ["fraud_investigator"]
     },
     {
-      "username": "admin1",
+      "username": "compliance_officer",
       "enabled": true,
-      "email": "admin1@acme.local",
-      "firstName": "Admin",
-      "lastName": "User",
+      "email": "compliance_officer@natwest.local",
+      "firstName": "Compliance",
+      "lastName": "Officer",
       "credentials": [
         {
           "type": "password",
-          "value": "AdminPass123",
+          "value": "officer_pass123",
           "temporary": false
         }
       ],
-      "realmRoles": ["admin"]
+      "realmRoles": ["compliance_officer"]
     }
   ]
 }

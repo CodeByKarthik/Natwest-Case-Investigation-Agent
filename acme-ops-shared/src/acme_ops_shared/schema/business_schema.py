@@ -73,7 +73,7 @@ class IssueCreate(BaseModel):
     status: IssueStatusEnum
     priority: IssuePriorityEnum
     assigned_to_user_id: UUID | None = None
-    source_system: str = Field(default="acme-support", max_length=100)
+    source_system: str = Field(default="natwest-support", max_length=100)
     opened_at: datetime
     due_at: datetime | None = None
 

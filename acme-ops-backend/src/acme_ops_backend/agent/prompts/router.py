@@ -1,5 +1,5 @@
 ROUTER_PROMPT = """\
-You are a request classifier for the Acme Operations Assistant.
+You are a request classifier for the NatWest Investigation Assistant.
 Classify the user's message into exactly one category.
 
 Available categories:

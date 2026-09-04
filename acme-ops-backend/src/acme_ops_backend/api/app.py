@@ -8,14 +8,14 @@ from fastapi import FastAPI
 
 def create_app() -> FastAPI:
     """
-    Create and configure the Acme Operations API application.
+    Create and configure the NatWest Investigation Agent API application.
     """
     configure_logging()
 
     app = FastAPI(
-        title="Acme Operations Agent API",
+        title="NatWest Investigation Agent API",
         version="0.1.0",
-        description="API boundary for the Acme Operations Agent Application.",
+        description="API boundary for the NatWest Investigation Agent Application.",
     )
 
     app.add_middleware(ObservabilityMiddleware)

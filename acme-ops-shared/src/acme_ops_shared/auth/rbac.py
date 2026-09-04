@@ -4,18 +4,18 @@ from acme_ops_shared.schema.auth_schema import AuthContext
 from ..common.exceptions import PermissionDenied
 
 READ_ROLES = {
-    AppRole.SALES_USER,
-    AppRole.SUPPORT_USER,
-    AppRole.ADMIN,
+    AppRole.CUSTOMER_SUPPORT,
+    AppRole.FRAUD_INVESTIGATOR,
+    AppRole.COMPLIANCE_OFFICER,
 }
 
 WRITE_ROLES = {
-    AppRole.SUPPORT_USER,
-    AppRole.ADMIN,
+    AppRole.FRAUD_INVESTIGATOR,
+    AppRole.COMPLIANCE_OFFICER,
 }
 
 ADMIN_ROLES = {
-    AppRole.ADMIN,
+    AppRole.COMPLIANCE_OFFICER,
 }
 
 
@@ -46,4 +46,4 @@ def is_admin(context: AuthContext) -> bool:
     """
     Check if the user has admin privileges.
     """
-    return context.role == AppRole.ADMIN
+    return context.role == AppRole.COMPLIANCE_OFFICER

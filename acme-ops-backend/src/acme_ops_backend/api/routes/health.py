@@ -12,5 +12,5 @@ def health() -> dict[str, str]:
     """
     return {
         "status": "ok",
-        "service": "acme-ops-api",
+        "service": "natwest-ops-api",
     }

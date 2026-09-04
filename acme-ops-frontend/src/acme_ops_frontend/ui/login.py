@@ -111,14 +111,14 @@ def render_login() -> None:
 
         <div class="login-shell">
             <div class="login-card">
-                <div class="app-title">Acme Operations Agent</div>
+                <div class="app-title">NatWest Investigation Agent</div>
 
-                <div class="login-icon">🏢</div>
+                <div class="login-icon">🏦</div>
 
                 <h2 class="login-title">Sign in required</h2>
 
                 <p class="login-copy">
-                    Use your Acme Operations account to continue.
+                    Use your NatWest account to continue.
                 </p>
 
                 <a href="{auth_url}" target="_self" class="login-link">

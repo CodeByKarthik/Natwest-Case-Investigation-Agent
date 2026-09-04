@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: acme-ops-backend/Dockerfile
-    container_name: backend_acme_ops
+    container_name: backend_natwest_ops
     environment:
       DATABASE_URL: ${DATABASE_URL_DOCKER}
       KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER}
@@ -43,7 +43,7 @@ services:
 
   postgres:
     image: postgres:16
-    container_name: postgres_acme_ops
+    container_name: postgres_natwest_ops
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -51,7 +51,7 @@ services:
     expose:
       - "5432"
     volumes:
-      - acme_ops_pgdata:/var/lib/postgresql/data
+      - natwest_ops_pgdata:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d
     healthcheck:
       test:
@@ -66,7 +66,7 @@ services:
   db-init:
     build:
       context: ./acme-ops-shared
-    container_name: acme_ops_db_init
+    container_name: natwest_ops_db_init
     environment:
       DATABASE_URL: ${DATABASE_URL_DOCKER}
       KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER}
@@ -83,7 +83,7 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
-    container_name: keycloak_acme_ops
+    container_name: keycloak_natwest_ops
     command: ["start-dev", "--import-realm"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME}
@@ -108,7 +108,7 @@ services:
 
   streamlit:
     build: ./acme-ops-frontend
-    container_name: frontend_acme_ops
+    container_name: frontend_natwest_ops
     ports:
       - "${STREAMLIT_PORT}:${STREAMLIT_PORT}"
     environment:
@@ -133,7 +133,7 @@ services:
     build:
       context: .
       dockerfile: acme-ops-mcp/Dockerfile
-    container_name: mcp_acme_ops
+    container_name: mcp_natwest_ops
     command: ["python", "-m", "acme_ops_mcp.mcp.server"]
     environment:
       DATABASE_URL: ${DATABASE_URL_DOCKER}
@@ -153,7 +153,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: redis_acme_ops
+    container_name: redis_natwest_ops
     expose:
       - "6379"
     healthcheck:
@@ -163,4 +163,4 @@ services:
       retries: 10
 
 volumes:
-  acme_ops_pgdata:
+  natwest_ops_pgdata:

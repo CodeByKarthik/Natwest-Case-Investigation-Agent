@@ -5,13 +5,12 @@ from typing import List
 
 class AppRole(StrEnum):
     """
-    Enum representing different application
-    roles for users in the system
+    Enum representing different application roles for banking case investigation users.
     """
 
-    SALES_USER = "sales_user"
-    SUPPORT_USER = "support_user"
-    ADMIN = "admin"
+    CUSTOMER_SUPPORT = "customer_support"
+    FRAUD_INVESTIGATOR = "fraud_investigator"
+    COMPLIANCE_OFFICER = "compliance_officer"
 
 
 class CustomerTierEnum(StrEnum):

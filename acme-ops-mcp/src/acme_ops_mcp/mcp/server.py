@@ -5,17 +5,17 @@ from .tools.tool_registry import register_all_tools
 
 def create_mcp_server() -> FastMCP:
     """
-    Create and configure the Acme Operations MCP server.
+    Create and configure the NatWest Operations MCP server.
 
     - Defines server instructions for tool usage and authentication.
     - Registers all business tools on the server.
     - Returns the configured FastMCP instance ready to run.
     """
     mcp = FastMCP(
-        name="Acme Operations MCP",
+        name="NatWest Operations MCP",
         instructions=(
-            "Use these tools to retrieve and update Acme Operations customer, "
-            "issue, issue update, and next-action data. Authentication is provided "
+            "Use these tools to retrieve and update NatWest customer, "
+            "case, case event, and next-action data. Authentication is provided "
             "through the HTTP Authorization bearer token. Do not ask users for tokens."
         ),
     )

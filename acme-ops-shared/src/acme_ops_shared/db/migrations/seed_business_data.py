@@ -174,9 +174,9 @@ def seed_business_data() -> None:
     now = datetime.now(UTC)
 
     with SessionLocal() as session:
-        sales_user = get_user_by_username(session, "sales1")
-        support_user = get_user_by_username(session, "support1")
-        admin_user = get_user_by_username(session, "admin1")
+        customer_fraud_investigator_user = get_user_by_username(session, "customer_support")
+        fraud_investigator_user = get_user_by_username(session, "fraud_investigator")
+        compliance_officer_user = get_user_by_username(session, "compliance_officer")
 
         globex = get_or_create_customer(
             session,
@@ -184,7 +184,7 @@ def seed_business_data() -> None:
             industry="Financial Services",
             tier=CustomerTierEnum.ENTERPRISE,
             health_status=CustomerHealthEnum.AT_RISK,
-            account_owner_user_id=sales_user.id,
+            account_owner_user_id=customer_fraud_investigator_user.id,
             contract_value=Decimal("250000.00"),
             notes=(
                 "Strategic enterprise customer. Executive team is sensitive "
@@ -198,7 +198,7 @@ def seed_business_data() -> None:
             industry="Technology",
             tier=CustomerTierEnum.MID_MARKET,
             health_status=CustomerHealthEnum.HEALTHY,
-            account_owner_user_id=sales_user.id,
+            account_owner_user_id=customer_fraud_investigator_user.id,
             contract_value=Decimal("85000.00"),
             notes="Generally healthy account with moderate product usage growth.",
         )
@@ -209,7 +209,7 @@ def seed_business_data() -> None:
             industry="Retail",
             tier=CustomerTierEnum.ENTERPRISE,
             health_status=CustomerHealthEnum.WATCH,
-            account_owner_user_id=sales_user.id,
+            account_owner_user_id=customer_fraud_investigator_user.id,
             contract_value=Decimal("175000.00"),
             notes=(
                 "Expansion opportunity, but recent integration issues need "
@@ -223,7 +223,7 @@ def seed_business_data() -> None:
             industry="Manufacturing",
             tier=CustomerTierEnum.ENTERPRISE,
             health_status=CustomerHealthEnum.CRITICAL,
-            account_owner_user_id=sales_user.id,
+            account_owner_user_id=customer_fraud_investigator_user.id,
             contract_value=Decimal("420000.00"),
             notes=(
                 "High-value enterprise customer. Current outage is affecting "
@@ -237,7 +237,7 @@ def seed_business_data() -> None:
             industry="Logistics",
             tier=CustomerTierEnum.ENTERPRISE,
             health_status=CustomerHealthEnum.HEALTHY,
-            account_owner_user_id=sales_user.id,
+            account_owner_user_id=customer_fraud_investigator_user.id,
             contract_value=Decimal("310000.00"),
             notes=(
                 "Stable enterprise customer with strong adoption and no major "
@@ -251,7 +251,7 @@ def seed_business_data() -> None:
             industry="Food Manufacturing",
             tier=CustomerTierEnum.SMB,
             health_status=CustomerHealthEnum.WATCH,
-            account_owner_user_id=sales_user.id,
+            account_owner_user_id=customer_fraud_investigator_user.id,
             contract_value=Decimal("32000.00"),
             notes=(
                 "Smaller account with intermittent operational issues and "
@@ -265,7 +265,7 @@ def seed_business_data() -> None:
             industry="Industrial Automation",
             tier=CustomerTierEnum.MID_MARKET,
             health_status=CustomerHealthEnum.AT_RISK,
-            account_owner_user_id=sales_user.id,
+            account_owner_user_id=customer_fraud_investigator_user.id,
             contract_value=Decimal("125000.00"),
             notes=(
                 "Account is at risk due to repeated integration incidents and "
@@ -284,8 +284,8 @@ def seed_business_data() -> None:
             ),
             status=IssueStatusEnum.OPEN,
             priority=IssuePriorityEnum.P1,
-            assigned_to_user_id=support_user.id,
-            source_system="acme-support",
+            assigned_to_user_id=fraud_investigator_user.id,
+            source_system="natwest-support",
             opened_at=now - timedelta(days=2),
             due_at=now + timedelta(days=1),
         )
@@ -301,8 +301,8 @@ def seed_business_data() -> None:
             ),
             status=IssueStatusEnum.IN_PROGRESS,
             priority=IssuePriorityEnum.P2,
-            assigned_to_user_id=support_user.id,
-            source_system="acme-support",
+            assigned_to_user_id=fraud_investigator_user.id,
+            source_system="natwest-support",
             opened_at=now - timedelta(days=5),
             due_at=now + timedelta(days=3),
         )
@@ -318,8 +318,8 @@ def seed_business_data() -> None:
             ),
             status=IssueStatusEnum.OPEN,
             priority=IssuePriorityEnum.P3,
-            assigned_to_user_id=support_user.id,
-            source_system="acme-support",
+            assigned_to_user_id=fraud_investigator_user.id,
+            source_system="natwest-support",
             opened_at=now - timedelta(days=1),
             due_at=now + timedelta(days=7),
         )
@@ -335,8 +335,8 @@ def seed_business_data() -> None:
             ),
             status=IssueStatusEnum.BLOCKED,
             priority=IssuePriorityEnum.P2,
-            assigned_to_user_id=support_user.id,
-            source_system="acme-support",
+            assigned_to_user_id=fraud_investigator_user.id,
+            source_system="natwest-support",
             opened_at=now - timedelta(days=4),
             due_at=now + timedelta(days=2),
         )
@@ -352,8 +352,8 @@ def seed_business_data() -> None:
             ),
             status=IssueStatusEnum.OPEN,
             priority=IssuePriorityEnum.P1,
-            assigned_to_user_id=support_user.id,
-            source_system="acme-support",
+            assigned_to_user_id=fraud_investigator_user.id,
+            source_system="natwest-support",
             opened_at=now - timedelta(hours=10),
             due_at=now + timedelta(hours=6),
         )
@@ -369,8 +369,8 @@ def seed_business_data() -> None:
             ),
             status=IssueStatusEnum.IN_PROGRESS,
             priority=IssuePriorityEnum.P2,
-            assigned_to_user_id=support_user.id,
-            source_system="acme-support",
+            assigned_to_user_id=fraud_investigator_user.id,
+            source_system="natwest-support",
             opened_at=now - timedelta(days=3),
             due_at=now + timedelta(days=1),
         )
@@ -386,8 +386,8 @@ def seed_business_data() -> None:
             ),
             status=IssueStatusEnum.RESOLVED,
             priority=IssuePriorityEnum.P4,
-            assigned_to_user_id=support_user.id,
-            source_system="acme-support",
+            assigned_to_user_id=fraud_investigator_user.id,
+            source_system="natwest-support",
             opened_at=now - timedelta(days=12),
             due_at=now - timedelta(days=7),
         )
@@ -403,8 +403,8 @@ def seed_business_data() -> None:
             ),
             status=IssueStatusEnum.OPEN,
             priority=IssuePriorityEnum.P3,
-            assigned_to_user_id=support_user.id,
-            source_system="acme-support",
+            assigned_to_user_id=fraud_investigator_user.id,
+            source_system="natwest-support",
             opened_at=now - timedelta(days=2),
             due_at=now + timedelta(days=5),
         )
@@ -420,8 +420,8 @@ def seed_business_data() -> None:
             ),
             status=IssueStatusEnum.BLOCKED,
             priority=IssuePriorityEnum.P1,
-            assigned_to_user_id=support_user.id,
-            source_system="acme-support",
+            assigned_to_user_id=fraud_investigator_user.id,
+            source_system="natwest-support",
             opened_at=now - timedelta(days=6),
             due_at=now - timedelta(hours=4),
         )
@@ -437,8 +437,8 @@ def seed_business_data() -> None:
             ),
             status=IssueStatusEnum.OPEN,
             priority=IssuePriorityEnum.P3,
-            assigned_to_user_id=support_user.id,
-            source_system="acme-support",
+            assigned_to_user_id=fraud_investigator_user.id,
+            source_system="natwest-support",
             opened_at=now - timedelta(days=1),
             due_at=now + timedelta(days=4),
         )
@@ -446,9 +446,9 @@ def seed_business_data() -> None:
         add_issue_update_if_missing(
             session,
             issue_id=issue_101.id,
-            author_user_id=support_user.id,
+            author_user_id=fraud_investigator_user.id,
             author_name="Sam Support",
-            author_role="support_user",
+            author_role="fraud_investigator_user",
             update_text=(
                 "Confirmed export job timeout in production logs. Customer is "
                 "blocked on month-end finance reporting."
@@ -460,9 +460,9 @@ def seed_business_data() -> None:
         add_issue_update_if_missing(
             session,
             issue_id=issue_101.id,
-            author_user_id=support_user.id,
+            author_user_id=fraud_investigator_user.id,
             author_name="Sam Support",
-            author_role="support_user",
+            author_role="fraud_investigator_user",
             update_text=(
                 "Temporary workaround identified, but customer has not confirmed "
                 "whether the workaround satisfies finance reporting requirements."
@@ -474,9 +474,9 @@ def seed_business_data() -> None:
         add_issue_update_if_missing(
             session,
             issue_id=issue_101.id,
-            author_user_id=admin_user.id,
+            author_user_id=compliance_officer_user.id,
             author_name="Anita Admin",
-            author_role="admin",
+            author_role="compliance_officer",
             update_text=(
                 "Executive update requested because this is a P1 issue on an "
                 "at-risk enterprise account."
@@ -488,9 +488,9 @@ def seed_business_data() -> None:
         add_issue_update_if_missing(
             session,
             issue_id=issue_102.id,
-            author_user_id=support_user.id,
+            author_user_id=fraud_investigator_user.id,
             author_name="Sam Support",
-            author_role="support_user",
+            author_role="fraud_investigator_user",
             update_text=(
                 "Initial investigation points to a SAML certificate mismatch. "
                 "Waiting for customer IdP metadata confirmation."
@@ -502,9 +502,9 @@ def seed_business_data() -> None:
         add_issue_update_if_missing(
             session,
             issue_id=issue_201.id,
-            author_user_id=support_user.id,
+            author_user_id=fraud_investigator_user.id,
             author_name="Sam Support",
-            author_role="support_user",
+            author_role="fraud_investigator_user",
             update_text=(
                 "Reproduced dashboard slowdown using a nine-month date range. "
                 "Need to inspect query performance logs."
@@ -516,9 +516,9 @@ def seed_business_data() -> None:
         add_issue_update_if_missing(
             session,
             issue_id=issue_301.id,
-            author_user_id=support_user.id,
+            author_user_id=fraud_investigator_user.id,
             author_name="Sam Support",
-            author_role="support_user",
+            author_role="fraud_investigator_user",
             update_text="Issue is blocked pending store connector logs from the customer.",
             is_customer_visible=True,
             created_at=now - timedelta(days=3),
@@ -527,9 +527,9 @@ def seed_business_data() -> None:
         add_issue_update_if_missing(
             session,
             issue_id=issue_401.id,
-            author_user_id=support_user.id,
+            author_user_id=fraud_investigator_user.id,
             author_name="Sam Support",
-            author_role="support_user",
+            author_role="fraud_investigator_user",
             update_text=(
                 "Confirmed dashboard API is returning 503 errors across all "
                 "Stark admin workspaces."
@@ -541,9 +541,9 @@ def seed_business_data() -> None:
         add_issue_update_if_missing(
             session,
             issue_id=issue_401.id,
-            author_user_id=admin_user.id,
+            author_user_id=compliance_officer_user.id,
             author_name="Anita Admin",
-            author_role="admin",
+            author_role="compliance_officer",
             update_text=(
                 "Incident review opened. Engineering escalation required because "
                 "customer executives are directly impacted."
@@ -555,9 +555,9 @@ def seed_business_data() -> None:
         add_issue_update_if_missing(
             session,
             issue_id=issue_402.id,
-            author_user_id=support_user.id,
+            author_user_id=fraud_investigator_user.id,
             author_name="Sam Support",
-            author_role="support_user",
+            author_role="fraud_investigator_user",
             update_text=(
                 "Webhook retry logs show elevated 429 responses from the customer "
                 "endpoint during batch windows."
@@ -569,9 +569,9 @@ def seed_business_data() -> None:
         add_issue_update_if_missing(
             session,
             issue_id=issue_501.id,
-            author_user_id=support_user.id,
+            author_user_id=fraud_investigator_user.id,
             author_name="Sam Support",
-            author_role="support_user",
+            author_role="fraud_investigator_user",
             update_text=(
                 "Report index was rebuilt and archived shipment exports are now "
                 "visible in the UI."
@@ -583,9 +583,9 @@ def seed_business_data() -> None:
         add_issue_update_if_missing(
             session,
             issue_id=issue_601.id,
-            author_user_id=support_user.id,
+            author_user_id=fraud_investigator_user.id,
             author_name="Sam Support",
-            author_role="support_user",
+            author_role="fraud_investigator_user",
             update_text=(
                 "Email queue delay appears correlated with evening batch order "
                 "processing volume."
@@ -597,9 +597,9 @@ def seed_business_data() -> None:
         add_issue_update_if_missing(
             session,
             issue_id=issue_701.id,
-            author_user_id=support_user.id,
+            author_user_id=fraud_investigator_user.id,
             author_name="Sam Support",
-            author_role="support_user",
+            author_role="fraud_investigator_user",
             update_text=(
                 "Telemetry backlog exceeded alert threshold. Customer needs to "
                 "provide latest device batch logs before ingestion tuning can continue."
@@ -611,9 +611,9 @@ def seed_business_data() -> None:
         add_issue_update_if_missing(
             session,
             issue_id=issue_701.id,
-            author_user_id=admin_user.id,
+            author_user_id=compliance_officer_user.id,
             author_name="Anita Admin",
-            author_role="admin",
+            author_role="compliance_officer",
             update_text=(
                 "SLA risk flagged because the issue is past due and affects "
                 "operational alerting."
@@ -625,9 +625,9 @@ def seed_business_data() -> None:
         add_issue_update_if_missing(
             session,
             issue_id=issue_702.id,
-            author_user_id=support_user.id,
+            author_user_id=fraud_investigator_user.id,
             author_name="Sam Support",
-            author_role="support_user",
+            author_role="fraud_investigator_user",
             update_text=(
                 "Duplicate alerts reproduced after forced reconnect. Need event "
                 "deduplication review."
@@ -644,11 +644,11 @@ def seed_business_data() -> None:
                 "Send Globex a concise status update covering impact, workaround "
                 "status, and next engineering step."
             ),
-            owner_user_id=support_user.id,
+            owner_user_id=fraud_investigator_user.id,
             due_at=now + timedelta(hours=8),
             status=NextActionStatusEnum.OPEN,
-            created_by_user_id=admin_user.id,
-            created_by_role="admin",
+            created_by_user_id=compliance_officer_user.id,
+            created_by_role="compliance_officer",
         )
 
         add_next_action_if_missing(
@@ -659,11 +659,11 @@ def seed_business_data() -> None:
                 "Review dashboard query performance logs and confirm whether "
                 "caching should be adjusted."
             ),
-            owner_user_id=support_user.id,
+            owner_user_id=fraud_investigator_user.id,
             due_at=now + timedelta(days=2),
             status=NextActionStatusEnum.OPEN,
-            created_by_user_id=support_user.id,
-            created_by_role="support_user",
+            created_by_user_id=fraud_investigator_user.id,
+            created_by_role="fraud_investigator_user",
         )
 
         add_next_action_if_missing(
@@ -674,11 +674,11 @@ def seed_business_data() -> None:
                 "Request regional store connector logs from Umbrella Retail "
                 "operations team."
             ),
-            owner_user_id=support_user.id,
+            owner_user_id=fraud_investigator_user.id,
             due_at=now + timedelta(hours=12),
             status=NextActionStatusEnum.OPEN,
-            created_by_user_id=support_user.id,
-            created_by_role="support_user",
+            created_by_user_id=fraud_investigator_user.id,
+            created_by_role="fraud_investigator_user",
         )
 
         add_next_action_if_missing(
@@ -689,11 +689,11 @@ def seed_business_data() -> None:
                 "Escalate dashboard 503 errors to engineering incident owner "
                 "and request mitigation plan within four hours."
             ),
-            owner_user_id=admin_user.id,
+            owner_user_id=compliance_officer_user.id,
             due_at=now + timedelta(hours=4),
             status=NextActionStatusEnum.OPEN,
-            created_by_user_id=admin_user.id,
-            created_by_role="admin",
+            created_by_user_id=compliance_officer_user.id,
+            created_by_role="compliance_officer",
         )
 
         add_next_action_if_missing(
@@ -704,11 +704,11 @@ def seed_business_data() -> None:
                 "Prepare executive-facing incident update for Stark Industries "
                 "account sponsor."
             ),
-            owner_user_id=sales_user.id,
+            owner_user_id=customer_fraud_investigator_user.id,
             due_at=now + timedelta(hours=3),
             status=NextActionStatusEnum.IN_PROGRESS,
-            created_by_user_id=admin_user.id,
-            created_by_role="admin",
+            created_by_user_id=compliance_officer_user.id,
+            created_by_role="compliance_officer",
         )
 
         add_next_action_if_missing(
@@ -719,11 +719,11 @@ def seed_business_data() -> None:
                 "Compare webhook retry volume with customer endpoint rate limits "
                 "and recommend retry policy adjustment."
             ),
-            owner_user_id=support_user.id,
+            owner_user_id=fraud_investigator_user.id,
             due_at=now + timedelta(days=1),
             status=NextActionStatusEnum.OPEN,
-            created_by_user_id=support_user.id,
-            created_by_role="support_user",
+            created_by_user_id=fraud_investigator_user.id,
+            created_by_role="fraud_investigator_user",
         )
 
         add_next_action_if_missing(
@@ -734,11 +734,11 @@ def seed_business_data() -> None:
                 "Confirm with Wayne Enterprises that archived shipment exports "
                 "are visible and close the customer loop."
             ),
-            owner_user_id=support_user.id,
+            owner_user_id=fraud_investigator_user.id,
             due_at=now - timedelta(days=6),
             status=NextActionStatusEnum.COMPLETED,
-            created_by_user_id=support_user.id,
-            created_by_role="support_user",
+            created_by_user_id=fraud_investigator_user.id,
+            created_by_role="fraud_investigator_user",
         )
 
         add_next_action_if_missing(
@@ -749,11 +749,11 @@ def seed_business_data() -> None:
                 "Inspect email queue metrics during evening processing and "
                 "identify whether worker scaling is required."
             ),
-            owner_user_id=support_user.id,
+            owner_user_id=fraud_investigator_user.id,
             due_at=now + timedelta(days=2),
             status=NextActionStatusEnum.OPEN,
-            created_by_user_id=support_user.id,
-            created_by_role="support_user",
+            created_by_user_id=fraud_investigator_user.id,
+            created_by_role="fraud_investigator_user",
         )
 
         add_next_action_if_missing(
@@ -764,11 +764,11 @@ def seed_business_data() -> None:
                 "Review SLA exposure for Cyberdyne because telemetry ingestion "
                 "is past due and blocked on customer logs."
             ),
-            owner_user_id=admin_user.id,
+            owner_user_id=compliance_officer_user.id,
             due_at=now + timedelta(hours=2),
             status=NextActionStatusEnum.OPEN,
-            created_by_user_id=admin_user.id,
-            created_by_role="admin",
+            created_by_user_id=compliance_officer_user.id,
+            created_by_role="compliance_officer",
         )
 
         add_next_action_if_missing(
@@ -779,11 +779,11 @@ def seed_business_data() -> None:
                 "Ask Cyberdyne for latest device batch logs and confirm expected "
                 "delivery time."
             ),
-            owner_user_id=support_user.id,
+            owner_user_id=fraud_investigator_user.id,
             due_at=now + timedelta(hours=6),
             status=NextActionStatusEnum.OPEN,
-            created_by_user_id=support_user.id,
-            created_by_role="support_user",
+            created_by_user_id=fraud_investigator_user.id,
+            created_by_role="fraud_investigator_user",
         )
 
         add_next_action_if_missing(
@@ -794,11 +794,11 @@ def seed_business_data() -> None:
                 "Review duplicate alert generation after device reconnect and "
                 "propose deduplication fix."
             ),
-            owner_user_id=support_user.id,
+            owner_user_id=fraud_investigator_user.id,
             due_at=now + timedelta(days=3),
             status=NextActionStatusEnum.OPEN,
-            created_by_user_id=support_user.id,
-            created_by_role="support_user",
+            created_by_user_id=fraud_investigator_user.id,
+            created_by_role="fraud_investigator_user",
         )
 
         session.commit()

@@ -135,7 +135,7 @@ class Issue(Base):
     source_system: Mapped[str] = mapped_column(
         String(100),
         nullable=False,
-        default="acme-support",
+        default="natwest-support",
     )
 
     opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

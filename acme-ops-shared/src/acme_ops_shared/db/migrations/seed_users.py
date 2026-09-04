@@ -4,29 +4,38 @@ from ..models import AppRole, AppUser
 from ..session import SessionLocal
 
 ROLES = [
-    ("sales_user", "Read-only access to customer and issue data"),
-    ("support_user", "Read and update access for support issues"),
-    ("admin", "Full administrative access"),
+    (
+        "customer_support",
+        "Handles initial customer contact and routine queries. Read-only access to support-visible cases. Cannot see internal notes or fraud cases.",
+    ),
+    (
+        "fraud_investigator",
+        "Investigates disputed transactions and suspected scams. Can update status on fraud and dispute cases. Cannot manage next actions or modify compliance records.",
+    ),
+    (
+        "compliance_officer",
+        "Oversees case quality, vulnerability handling, and regulatory reporting. Full access to all cases, events, and write operations.",
+    ),
 ]
 
 USERS = [
     {
-        "username": "sales1",
-        "email": "sales1@acme.test",
-        "full_name": "Sarah Sales",
-        "role": "sales_user",
+        "username": "customer_support",
+        "email": "customer_support@natwest.test",
+        "full_name": "Customer Support User",
+        "role": "customer_support",
     },
     {
-        "username": "support1",
-        "email": "support1@acme.test",
-        "full_name": "Sam Support",
-        "role": "support_user",
+        "username": "fraud_investigator",
+        "email": "fraud_investigator@natwest.test",
+        "full_name": "Fraud Investigator User",
+        "role": "fraud_investigator",
     },
     {
-        "username": "admin1",
-        "email": "admin1@acme.test",
-        "full_name": "Anita Admin",
-        "role": "admin",
+        "username": "compliance_officer",
+        "email": "compliance_officer@natwest.test",
+        "full_name": "Compliance Officer User",
+        "role": "compliance_officer",
     },
 ]
 

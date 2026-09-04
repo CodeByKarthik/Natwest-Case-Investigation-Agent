@@ -8,11 +8,11 @@ from acme_ops_frontend.ui.login import render_login
 
 def main() -> None:
     st.set_page_config(
-        page_title="Acme Operations Agent",
+        page_title="NatWest Investigation Agent",
         layout="centered",
     )
 
-    st.title("Acme Operations Agent")
+    st.title("NatWest Investigation Agent")
 
     if "access_token" not in st.session_state:
         if handle_auth_callback():
