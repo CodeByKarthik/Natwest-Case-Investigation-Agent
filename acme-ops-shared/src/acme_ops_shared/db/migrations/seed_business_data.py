@@ -1,19 +1,11 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from acme_ops_shared.common.enums import (
-    CustomerHealthEnum,
-    CustomerTierEnum,
-    IssuePriorityEnum,
-    IssueStatusEnum,
-    NextActionStatusEnum,
-    NextActionTypeEnum,
-)
-from acme_ops_shared.db.models.business import Customer, Issue, IssueUpdate, NextAction
+from acme_ops_shared.db.models.business import Account, Customer, Issue, IssueUpdate, NextAction
 from acme_ops_shared.db.models.user import AppUser
 from acme_ops_shared.db.session import SessionLocal
 
@@ -24,7 +16,7 @@ def get_user_by_username(session: Session, username: str) -> AppUser:
     if user is None:
         raise RuntimeError(
             f"Required seed user '{username}' not found. "
-            "Run seed_user_data before seed_business_data."
+            "Run seed_users before seed_business_data."
         )
 
     return user
@@ -33,88 +25,132 @@ def get_user_by_username(session: Session, username: str) -> AppUser:
 def get_or_create_customer(
     session: Session,
     *,
-    name: str,
-    industry: str,
-    tier: CustomerTierEnum,
-    health_status: CustomerHealthEnum,
-    account_owner_user_id: UUID | None,
-    contract_value: Decimal,
-    notes: str,
+    full_name: str,
+    date_of_birth: date,
+    primary_account_number: str,
+    primary_sort_code: str,
+    customer_since: date,
+    kyc_status: str,
+    vulnerability_flag: bool,
+    vulnerability_type: str | None,
+    vulnerability_notes: str | None,
+    tier: str,
 ) -> Customer:
-    existing = session.scalar(select(Customer).where(Customer.name == name))
+    existing = session.scalar(
+        select(Customer).where(Customer.primary_account_number == primary_account_number)
+    )
 
     if existing is not None:
         return existing
 
     customer = Customer(
-        name=name,
-        industry=industry,
+        full_name=full_name,
+        date_of_birth=date_of_birth,
+        primary_account_number=primary_account_number,
+        primary_sort_code=primary_sort_code,
+        customer_since=customer_since,
+        kyc_status=kyc_status,
+        vulnerability_flag=vulnerability_flag,
+        vulnerability_type=vulnerability_type,
+        vulnerability_notes=vulnerability_notes,
         tier=tier,
-        health_status=health_status,
-        account_owner_user_id=account_owner_user_id,
-        contract_value=contract_value,
-        notes=notes,
     )
 
     session.add(customer)
     session.flush()
-
     return customer
 
 
-def get_or_create_issue(
+def get_or_create_account(
     session: Session,
     *,
-    external_ref: str,
     customer_id: UUID,
-    title: str,
-    description: str,
-    status: IssueStatusEnum,
-    priority: IssuePriorityEnum,
-    assigned_to_user_id: UUID | None,
-    source_system: str,
-    opened_at: datetime,
-    due_at: datetime | None,
-) -> Issue:
-    existing = session.scalar(select(Issue).where(Issue.external_ref == external_ref))
+    account_number: str,
+    sort_code: str,
+    account_type: str,
+    balance: Decimal | None,
+    status: str,
+    opened_date: date,
+) -> Account:
+    existing = session.scalar(select(Account).where(Account.account_number == account_number))
 
     if existing is not None:
         return existing
 
-    issue = Issue(
-        external_ref=external_ref,
+    account = Account(
         customer_id=customer_id,
-        title=title,
-        description=description,
+        account_number=account_number,
+        sort_code=sort_code,
+        account_type=account_type,
+        balance=balance,
         status=status,
-        priority=priority,
-        assigned_to_user_id=assigned_to_user_id,
-        source_system=source_system,
-        opened_at=opened_at,
-        due_at=due_at,
+        opened_date=opened_date,
     )
 
-    session.add(issue)
+    session.add(account)
     session.flush()
+    return account
 
-    return issue
 
-
-def add_issue_update_if_missing(
+def get_or_create_case(
     session: Session,
     *,
-    issue_id: UUID,
-    author_user_id: UUID | None,
-    author_name: str,
-    author_role: str,
-    update_text: str,
-    is_customer_visible: bool,
+    case_ref: str,
+    customer_id: UUID,
+    case_type: str,
+    status: str,
+    priority: str,
+    opened_date: datetime,
+    assigned_team: str,
+    assigned_user_id: UUID | None,
+    disputed_amount: Decimal | None,
+    merchant_name: str | None,
+    merchant_category: str | None,
+    consumer_duty_flag: bool,
+    description: str,
+) -> Issue:
+    existing = session.scalar(select(Issue).where(Issue.case_ref == case_ref))
+
+    if existing is not None:
+        return existing
+
+    case = Issue(
+        customer_id=customer_id,
+        case_ref=case_ref,
+        case_type=case_type,
+        status=status,
+        priority=priority,
+        opened_date=opened_date,
+        assigned_team=assigned_team,
+        assigned_user_id=assigned_user_id,
+        disputed_amount=disputed_amount,
+        merchant_name=merchant_name,
+        merchant_category=merchant_category,
+        consumer_duty_flag=consumer_duty_flag,
+        description=description,
+    )
+
+    session.add(case)
+    session.flush()
+    return case
+
+
+def add_case_event_if_missing(
+    session: Session,
+    *,
+    case_id: UUID,
+    event_type: str,
+    event_description: str,
+    is_internal: bool,
+    created_by_user_id: UUID | None,
+    created_by_name: str | None,
+    created_by_role: str | None,
     created_at: datetime,
 ) -> None:
     existing = session.scalar(
         select(IssueUpdate).where(
-            IssueUpdate.issue_id == issue_id,
-            IssueUpdate.update_text == update_text,
+            IssueUpdate.case_id == case_id,
+            IssueUpdate.event_description == event_description,
         )
     )
 
@@ -123,12 +159,13 @@ def add_issue_update_if_missing(
 
     session.add(
         IssueUpdate(
-            issue_id=issue_id,
-            author_user_id=author_user_id,
-            author_name=author_name,
-            author_role=author_role,
-            update_text=update_text,
-            is_customer_visible=is_customer_visible,
+            case_id=case_id,
+            event_type=event_type,
+            event_description=event_description,
+            is_internal=is_internal,
+            created_by_user_id=created_by_user_id,
+            created_by_name=created_by_name,
+            created_by_role=created_by_role,
             created_at=created_at,
         )
     )
@@ -137,19 +174,19 @@ def add_issue_update_if_missing(
 def add_next_action_if_missing(
     session: Session,
     *,
-    issue_id: UUID,
-    action_type: NextActionTypeEnum,
-    action_text: str,
-    owner_user_id: UUID | None,
-    due_at: datetime | None,
-    status: NextActionStatusEnum,
+    case_id: UUID,
+    action_type: str,
+    description: str,
+    due_date: datetime,
+    status: str,
+    assigned_user_id: UUID | None,
     created_by_user_id: UUID | None,
-    created_by_role: str,
+    created_by_role: str | None,
 ) -> None:
     existing = session.scalar(
         select(NextAction).where(
-            NextAction.issue_id == issue_id,
-            NextAction.action_text == action_text,
+            NextAction.case_id == case_id,
+            NextAction.description == description,
         )
     )
 
@@ -158,12 +195,12 @@ def add_next_action_if_missing(
 
     session.add(
         NextAction(
-            issue_id=issue_id,
+            case_id=case_id,
             action_type=action_type,
-            action_text=action_text,
-            owner_user_id=owner_user_id,
-            due_at=due_at,
+            description=description,
+            due_date=due_date,
             status=status,
+            assigned_user_id=assigned_user_id,
             created_by_user_id=created_by_user_id,
             created_by_role=created_by_role,
         )
@@ -174,636 +211,210 @@ def seed_business_data() -> None:
     now = datetime.now(UTC)
 
     with SessionLocal() as session:
-        customer_fraud_investigator_user = get_user_by_username(session, "customer_support")
+        customer_support_user = get_user_by_username(session, "customer_support")
         fraud_investigator_user = get_user_by_username(session, "fraud_investigator")
         compliance_officer_user = get_user_by_username(session, "compliance_officer")
 
-        globex = get_or_create_customer(
+        aisha = get_or_create_customer(
             session,
-            name="Globex Corporation",
-            industry="Financial Services",
-            tier=CustomerTierEnum.ENTERPRISE,
-            health_status=CustomerHealthEnum.AT_RISK,
-            account_owner_user_id=customer_fraud_investigator_user.id,
-            contract_value=Decimal("250000.00"),
-            notes=(
-                "Strategic enterprise customer. Executive team is sensitive "
-                "to support delays."
-            ),
+            full_name="Aisha Rahman",
+            date_of_birth=date(1988, 6, 14),
+            primary_account_number="1234567890",
+            primary_sort_code="040004",
+            customer_since=date(2018, 2, 1),
+            kyc_status="verified",
+            vulnerability_flag=False,
+            vulnerability_type=None,
+            vulnerability_notes=None,
+            tier="premium",
         )
 
-        initech = get_or_create_customer(
+        michael = get_or_create_customer(
             session,
-            name="Initech",
-            industry="Technology",
-            tier=CustomerTierEnum.MID_MARKET,
-            health_status=CustomerHealthEnum.HEALTHY,
-            account_owner_user_id=customer_fraud_investigator_user.id,
-            contract_value=Decimal("85000.00"),
-            notes="Generally healthy account with moderate product usage growth.",
+            full_name="Michael Osei",
+            date_of_birth=date(1992, 11, 7),
+            primary_account_number="2345678901",
+            primary_sort_code="112233",
+            customer_since=date(2021, 8, 15),
+            kyc_status="pending_review",
+            vulnerability_flag=False,
+            vulnerability_type=None,
+            vulnerability_notes=None,
+            tier="standard",
         )
 
-        umbrella = get_or_create_customer(
+        priya = get_or_create_customer(
             session,
-            name="Umbrella Retail",
-            industry="Retail",
-            tier=CustomerTierEnum.ENTERPRISE,
-            health_status=CustomerHealthEnum.WATCH,
-            account_owner_user_id=customer_fraud_investigator_user.id,
-            contract_value=Decimal("175000.00"),
-            notes=(
-                "Expansion opportunity, but recent integration issues need "
-                "close monitoring."
-            ),
+            full_name="Priya Nair",
+            date_of_birth=date(1979, 3, 26),
+            primary_account_number="3456789012",
+            primary_sort_code="203040",
+            customer_since=date(2015, 6, 10),
+            kyc_status="verified",
+            vulnerability_flag=True,
+            vulnerability_type="life_event",
+            vulnerability_notes="Recent bereavement and reduced financial resilience.",
+            tier="private_banking",
         )
 
-        stark = get_or_create_customer(
+        get_or_create_account(
             session,
-            name="Stark Industries",
-            industry="Manufacturing",
-            tier=CustomerTierEnum.ENTERPRISE,
-            health_status=CustomerHealthEnum.CRITICAL,
-            account_owner_user_id=customer_fraud_investigator_user.id,
-            contract_value=Decimal("420000.00"),
-            notes=(
-                "High-value enterprise customer. Current outage is affecting "
-                "executive dashboards and renewal confidence."
-            ),
+            customer_id=aisha.id,
+            account_number="10012345678",
+            sort_code="040004",
+            account_type="current",
+            balance=Decimal("18542.76"),
+            status="active",
+            opened_date=date(2018, 2, 1),
         )
 
-        wayne = get_or_create_customer(
+        get_or_create_account(
             session,
-            name="Wayne Enterprises",
-            industry="Logistics",
-            tier=CustomerTierEnum.ENTERPRISE,
-            health_status=CustomerHealthEnum.HEALTHY,
-            account_owner_user_id=customer_fraud_investigator_user.id,
-            contract_value=Decimal("310000.00"),
-            notes=(
-                "Stable enterprise customer with strong adoption and no major "
-                "active escalations."
-            ),
+            customer_id=michael.id,
+            account_number="10023456789",
+            sort_code="112233",
+            account_type="savings",
+            balance=Decimal("21650.12"),
+            status="active",
+            opened_date=date(2021, 8, 15),
         )
 
-        wonka = get_or_create_customer(
+        get_or_create_account(
             session,
-            name="Wonka Foods",
-            industry="Food Manufacturing",
-            tier=CustomerTierEnum.SMB,
-            health_status=CustomerHealthEnum.WATCH,
-            account_owner_user_id=customer_fraud_investigator_user.id,
-            contract_value=Decimal("32000.00"),
-            notes=(
-                "Smaller account with intermittent operational issues and "
-                "limited technical capacity."
-            ),
+            customer_id=priya.id,
+            account_number="10034567890",
+            sort_code="203040",
+            account_type="current",
+            balance=Decimal("48200.00"),
+            status="restricted",
+            opened_date=date(2015, 6, 10),
         )
 
-        cyberdyne = get_or_create_customer(
+        case_1001 = get_or_create_case(
             session,
-            name="Cyberdyne Systems",
-            industry="Industrial Automation",
-            tier=CustomerTierEnum.MID_MARKET,
-            health_status=CustomerHealthEnum.AT_RISK,
-            account_owner_user_id=customer_fraud_investigator_user.id,
-            contract_value=Decimal("125000.00"),
-            notes=(
-                "Account is at risk due to repeated integration incidents and "
-                "slow resolution cycles."
-            ),
+            case_ref="CASE-1001",
+            customer_id=aisha.id,
+            case_type="fraud",
+            status="under_investigation",
+            priority="p1",
+            opened_date=now - timedelta(days=4),
+            assigned_team="fraud",
+            assigned_user_id=fraud_investigator_user.id,
+            disputed_amount=Decimal("3475.80"),
+            merchant_name="Northlake Travel",
+            merchant_category="travel",
+            consumer_duty_flag=True,
+            description="Unrecognised card transactions in the customer travel profile after an ATM withdrawal in Spain.",
         )
 
-        issue_101 = get_or_create_issue(
+        case_1002 = get_or_create_case(
             session,
-            external_ref="ISSUE-101",
-            customer_id=globex.id,
-            title="Billing exports failing for enterprise finance team",
-            description=(
-                "Scheduled billing exports are timing out before completion. "
-                "Customer finance team cannot close monthly reporting."
-            ),
-            status=IssueStatusEnum.OPEN,
-            priority=IssuePriorityEnum.P1,
-            assigned_to_user_id=fraud_investigator_user.id,
-            source_system="natwest-support",
-            opened_at=now - timedelta(days=2),
-            due_at=now + timedelta(days=1),
+            case_ref="CASE-1002",
+            customer_id=michael.id,
+            case_type="complaint",
+            status="pending_customer",
+            priority="p2",
+            opened_date=now - timedelta(days=9),
+            assigned_team="customer_support",
+            assigned_user_id=customer_support_user.id,
+            disputed_amount=Decimal("1240.00"),
+            merchant_name="Harbor Broadband",
+            merchant_category="utilities",
+            consumer_duty_flag=False,
+            description="Customer disputes a duplicate payment after service cancellation and is waiting on evidence from the merchant.",
         )
 
-        issue_102 = get_or_create_issue(
+        case_1003 = get_or_create_case(
             session,
-            external_ref="ISSUE-102",
-            customer_id=globex.id,
-            title="SSO login failures after certificate rotation",
-            description=(
-                "Several Globex users cannot authenticate through SAML SSO "
-                "after the customer rotated their identity provider certificate."
-            ),
-            status=IssueStatusEnum.IN_PROGRESS,
-            priority=IssuePriorityEnum.P2,
-            assigned_to_user_id=fraud_investigator_user.id,
-            source_system="natwest-support",
-            opened_at=now - timedelta(days=5),
-            due_at=now + timedelta(days=3),
+            case_ref="CASE-1003",
+            customer_id=priya.id,
+            case_type="vulnerability_review",
+            status="escalated",
+            priority="p1",
+            opened_date=now - timedelta(days=2),
+            assigned_team="compliance",
+            assigned_user_id=compliance_officer_user.id,
+            disputed_amount=None,
+            merchant_name=None,
+            merchant_category=None,
+            consumer_duty_flag=False,
+            description="Customer has a documented vulnerability and needs a compliance review before any outbound action is taken.",
         )
 
-        issue_201 = get_or_create_issue(
+        add_case_event_if_missing(
             session,
-            external_ref="ISSUE-201",
-            customer_id=initech.id,
-            title="Dashboard filters slow on large date ranges",
-            description=(
-                "Customer reports that dashboard filtering becomes slow when "
-                "using date ranges longer than six months."
-            ),
-            status=IssueStatusEnum.OPEN,
-            priority=IssuePriorityEnum.P3,
-            assigned_to_user_id=fraud_investigator_user.id,
-            source_system="natwest-support",
-            opened_at=now - timedelta(days=1),
-            due_at=now + timedelta(days=7),
-        )
-
-        issue_301 = get_or_create_issue(
-            session,
-            external_ref="ISSUE-301",
-            customer_id=umbrella.id,
-            title="Inventory sync delayed for regional stores",
-            description=(
-                "Inventory updates from regional stores are delayed before "
-                "appearing in the operations dashboard."
-            ),
-            status=IssueStatusEnum.BLOCKED,
-            priority=IssuePriorityEnum.P2,
-            assigned_to_user_id=fraud_investigator_user.id,
-            source_system="natwest-support",
-            opened_at=now - timedelta(days=4),
-            due_at=now + timedelta(days=2),
-        )
-
-        issue_401 = get_or_create_issue(
-            session,
-            external_ref="ISSUE-401",
-            customer_id=stark.id,
-            title="Executive analytics dashboard unavailable",
-            description=(
-                "Executive analytics dashboard returns 503 errors for all "
-                "Stark Industries admin users."
-            ),
-            status=IssueStatusEnum.OPEN,
-            priority=IssuePriorityEnum.P1,
-            assigned_to_user_id=fraud_investigator_user.id,
-            source_system="natwest-support",
-            opened_at=now - timedelta(hours=10),
-            due_at=now + timedelta(hours=6),
-        )
-
-        issue_402 = get_or_create_issue(
-            session,
-            external_ref="ISSUE-402",
-            customer_id=stark.id,
-            title="Webhook delivery failures to manufacturing systems",
-            description=(
-                "Webhook events are failing intermittently, delaying downstream "
-                "manufacturing workflow updates."
-            ),
-            status=IssueStatusEnum.IN_PROGRESS,
-            priority=IssuePriorityEnum.P2,
-            assigned_to_user_id=fraud_investigator_user.id,
-            source_system="natwest-support",
-            opened_at=now - timedelta(days=3),
-            due_at=now + timedelta(days=1),
-        )
-
-        issue_501 = get_or_create_issue(
-            session,
-            external_ref="ISSUE-501",
-            customer_id=wayne.id,
-            title="Archived shipment reports missing from export UI",
-            description=(
-                "Older shipment reports are not visible in the export UI, but "
-                "API access still works."
-            ),
-            status=IssueStatusEnum.RESOLVED,
-            priority=IssuePriorityEnum.P4,
-            assigned_to_user_id=fraud_investigator_user.id,
-            source_system="natwest-support",
-            opened_at=now - timedelta(days=12),
-            due_at=now - timedelta(days=7),
-        )
-
-        issue_601 = get_or_create_issue(
-            session,
-            external_ref="ISSUE-601",
-            customer_id=wonka.id,
-            title="Order notification emails delayed",
-            description=(
-                "Order notification emails are delayed by up to forty minutes "
-                "during evening processing windows."
-            ),
-            status=IssueStatusEnum.OPEN,
-            priority=IssuePriorityEnum.P3,
-            assigned_to_user_id=fraud_investigator_user.id,
-            source_system="natwest-support",
-            opened_at=now - timedelta(days=2),
-            due_at=now + timedelta(days=5),
-        )
-
-        issue_701 = get_or_create_issue(
-            session,
-            external_ref="ISSUE-701",
-            customer_id=cyberdyne.id,
-            title="Device telemetry ingestion backlog",
-            description=(
-                "Telemetry ingestion is falling behind during peak batch upload "
-                "windows, causing delayed operational alerts."
-            ),
-            status=IssueStatusEnum.BLOCKED,
-            priority=IssuePriorityEnum.P1,
-            assigned_to_user_id=fraud_investigator_user.id,
-            source_system="natwest-support",
-            opened_at=now - timedelta(days=6),
-            due_at=now - timedelta(hours=4),
-        )
-
-        issue_702 = get_or_create_issue(
-            session,
-            external_ref="ISSUE-702",
-            customer_id=cyberdyne.id,
-            title="Duplicate alerts generated for resolved incidents",
-            description=(
-                "Resolved incidents sometimes generate duplicate alerts after "
-                "device reconnect events."
-            ),
-            status=IssueStatusEnum.OPEN,
-            priority=IssuePriorityEnum.P3,
-            assigned_to_user_id=fraud_investigator_user.id,
-            source_system="natwest-support",
-            opened_at=now - timedelta(days=1),
-            due_at=now + timedelta(days=4),
-        )
-
-        add_issue_update_if_missing(
-            session,
-            issue_id=issue_101.id,
-            author_user_id=fraud_investigator_user.id,
-            author_name="Sam Support",
-            author_role="fraud_investigator_user",
-            update_text=(
-                "Confirmed export job timeout in production logs. Customer is "
-                "blocked on month-end finance reporting."
-            ),
-            is_customer_visible=True,
-            created_at=now - timedelta(days=2, hours=-2),
-        )
-
-        add_issue_update_if_missing(
-            session,
-            issue_id=issue_101.id,
-            author_user_id=fraud_investigator_user.id,
-            author_name="Sam Support",
-            author_role="fraud_investigator_user",
-            update_text=(
-                "Temporary workaround identified, but customer has not confirmed "
-                "whether the workaround satisfies finance reporting requirements."
-            ),
-            is_customer_visible=True,
-            created_at=now - timedelta(days=1),
-        )
-
-        add_issue_update_if_missing(
-            session,
-            issue_id=issue_101.id,
-            author_user_id=compliance_officer_user.id,
-            author_name="Anita Admin",
-            author_role="compliance_officer",
-            update_text=(
-                "Executive update requested because this is a P1 issue on an "
-                "at-risk enterprise account."
-            ),
-            is_customer_visible=False,
-            created_at=now - timedelta(hours=12),
-        )
-
-        add_issue_update_if_missing(
-            session,
-            issue_id=issue_102.id,
-            author_user_id=fraud_investigator_user.id,
-            author_name="Sam Support",
-            author_role="fraud_investigator_user",
-            update_text=(
-                "Initial investigation points to a SAML certificate mismatch. "
-                "Waiting for customer IdP metadata confirmation."
-            ),
-            is_customer_visible=True,
-            created_at=now - timedelta(days=4),
-        )
-
-        add_issue_update_if_missing(
-            session,
-            issue_id=issue_201.id,
-            author_user_id=fraud_investigator_user.id,
-            author_name="Sam Support",
-            author_role="fraud_investigator_user",
-            update_text=(
-                "Reproduced dashboard slowdown using a nine-month date range. "
-                "Need to inspect query performance logs."
-            ),
-            is_customer_visible=True,
-            created_at=now - timedelta(hours=20),
-        )
-
-        add_issue_update_if_missing(
-            session,
-            issue_id=issue_301.id,
-            author_user_id=fraud_investigator_user.id,
-            author_name="Sam Support",
-            author_role="fraud_investigator_user",
-            update_text="Issue is blocked pending store connector logs from the customer.",
-            is_customer_visible=True,
+            case_id=case_1001.id,
+            event_type="status_change",
+            event_description="Case moved to under investigation after initial fraud screening flagged a pattern of foreign transactions.",
+            is_internal=True,
+            created_by_user_id=fraud_investigator_user.id,
+            created_by_name="Fraud Investigator User",
+            created_by_role="fraud_investigator",
             created_at=now - timedelta(days=3),
         )
 
-        add_issue_update_if_missing(
+        add_case_event_if_missing(
             session,
-            issue_id=issue_401.id,
-            author_user_id=fraud_investigator_user.id,
-            author_name="Sam Support",
-            author_role="fraud_investigator_user",
-            update_text=(
-                "Confirmed dashboard API is returning 503 errors across all "
-                "Stark admin workspaces."
-            ),
-            is_customer_visible=True,
+            case_id=case_1002.id,
+            event_type="customer_contact",
+            event_description="Customer asked for confirmation that the merchant dispute was being reviewed and requested a short update timeline.",
+            is_internal=False,
+            created_by_user_id=customer_support_user.id,
+            created_by_name="Customer Support User",
+            created_by_role="customer_support",
+            created_at=now - timedelta(days=1),
+        )
+
+        add_case_event_if_missing(
+            session,
+            case_id=case_1003.id,
+            event_type="escalation",
+            event_description="Compliance team requested a full vulnerability review and specialist handling plan before any case action.",
+            is_internal=True,
+            created_by_user_id=compliance_officer_user.id,
+            created_by_name="Compliance Officer User",
+            created_by_role="compliance_officer",
             created_at=now - timedelta(hours=8),
         )
 
-        add_issue_update_if_missing(
+        add_next_action_if_missing(
             session,
-            issue_id=issue_401.id,
-            author_user_id=compliance_officer_user.id,
-            author_name="Anita Admin",
-            author_role="compliance_officer",
-            update_text=(
-                "Incident review opened. Engineering escalation required because "
-                "customer executives are directly impacted."
-            ),
-            is_customer_visible=False,
-            created_at=now - timedelta(hours=6),
-        )
-
-        add_issue_update_if_missing(
-            session,
-            issue_id=issue_402.id,
-            author_user_id=fraud_investigator_user.id,
-            author_name="Sam Support",
-            author_role="fraud_investigator_user",
-            update_text=(
-                "Webhook retry logs show elevated 429 responses from the customer "
-                "endpoint during batch windows."
-            ),
-            is_customer_visible=True,
-            created_at=now - timedelta(days=2),
-        )
-
-        add_issue_update_if_missing(
-            session,
-            issue_id=issue_501.id,
-            author_user_id=fraud_investigator_user.id,
-            author_name="Sam Support",
-            author_role="fraud_investigator_user",
-            update_text=(
-                "Report index was rebuilt and archived shipment exports are now "
-                "visible in the UI."
-            ),
-            is_customer_visible=True,
-            created_at=now - timedelta(days=8),
-        )
-
-        add_issue_update_if_missing(
-            session,
-            issue_id=issue_601.id,
-            author_user_id=fraud_investigator_user.id,
-            author_name="Sam Support",
-            author_role="fraud_investigator_user",
-            update_text=(
-                "Email queue delay appears correlated with evening batch order "
-                "processing volume."
-            ),
-            is_customer_visible=True,
-            created_at=now - timedelta(days=1, hours=8),
-        )
-
-        add_issue_update_if_missing(
-            session,
-            issue_id=issue_701.id,
-            author_user_id=fraud_investigator_user.id,
-            author_name="Sam Support",
-            author_role="fraud_investigator_user",
-            update_text=(
-                "Telemetry backlog exceeded alert threshold. Customer needs to "
-                "provide latest device batch logs before ingestion tuning can continue."
-            ),
-            is_customer_visible=True,
-            created_at=now - timedelta(days=5),
-        )
-
-        add_issue_update_if_missing(
-            session,
-            issue_id=issue_701.id,
-            author_user_id=compliance_officer_user.id,
-            author_name="Anita Admin",
-            author_role="compliance_officer",
-            update_text=(
-                "SLA risk flagged because the issue is past due and affects "
-                "operational alerting."
-            ),
-            is_customer_visible=False,
-            created_at=now - timedelta(hours=10),
-        )
-
-        add_issue_update_if_missing(
-            session,
-            issue_id=issue_702.id,
-            author_user_id=fraud_investigator_user.id,
-            author_name="Sam Support",
-            author_role="fraud_investigator_user",
-            update_text=(
-                "Duplicate alerts reproduced after forced reconnect. Need event "
-                "deduplication review."
-            ),
-            is_customer_visible=True,
-            created_at=now - timedelta(hours=18),
+            case_id=case_1001.id,
+            action_type="escalate_fraud",
+            description="Escalate the suspected merchant abuse pattern to the specialist fraud operations team and request a merchant review.",
+            due_date=now + timedelta(days=1),
+            status="open",
+            assigned_user_id=fraud_investigator_user.id,
+            created_by_user_id=fraud_investigator_user.id,
+            created_by_role="fraud_investigator",
         )
 
         add_next_action_if_missing(
             session,
-            issue_id=issue_101.id,
-            action_type=NextActionTypeEnum.CUSTOMER_UPDATE,
-            action_text=(
-                "Send Globex a concise status update covering impact, workaround "
-                "status, and next engineering step."
-            ),
-            owner_user_id=fraud_investigator_user.id,
-            due_at=now + timedelta(hours=8),
-            status=NextActionStatusEnum.OPEN,
+            case_id=case_1002.id,
+            action_type="request_documents",
+            description="Request the merchant cancellation confirmation and bank statement evidence from the customer.",
+            due_date=now + timedelta(days=3),
+            status="in_progress",
+            assigned_user_id=customer_support_user.id,
+            created_by_user_id=customer_support_user.id,
+            created_by_role="customer_support",
+        )
+
+        add_next_action_if_missing(
+            session,
+            case_id=case_1003.id,
+            action_type="kyc_refresh",
+            description="Complete the vulnerability review, refresh the customer profile, and confirm adviser-led handling before any next action.",
+            due_date=now + timedelta(days=2),
+            status="open",
+            assigned_user_id=compliance_officer_user.id,
             created_by_user_id=compliance_officer_user.id,
             created_by_role="compliance_officer",
-        )
-
-        add_next_action_if_missing(
-            session,
-            issue_id=issue_201.id,
-            action_type=NextActionTypeEnum.TECHNICAL_INVESTIGATION,
-            action_text=(
-                "Review dashboard query performance logs and confirm whether "
-                "caching should be adjusted."
-            ),
-            owner_user_id=fraud_investigator_user.id,
-            due_at=now + timedelta(days=2),
-            status=NextActionStatusEnum.OPEN,
-            created_by_user_id=fraud_investigator_user.id,
-            created_by_role="fraud_investigator_user",
-        )
-
-        add_next_action_if_missing(
-            session,
-            issue_id=issue_301.id,
-            action_type=NextActionTypeEnum.CUSTOMER_UPDATE,
-            action_text=(
-                "Request regional store connector logs from Umbrella Retail "
-                "operations team."
-            ),
-            owner_user_id=fraud_investigator_user.id,
-            due_at=now + timedelta(hours=12),
-            status=NextActionStatusEnum.OPEN,
-            created_by_user_id=fraud_investigator_user.id,
-            created_by_role="fraud_investigator_user",
-        )
-
-        add_next_action_if_missing(
-            session,
-            issue_id=issue_401.id,
-            action_type=NextActionTypeEnum.ENGINEERING_ESCALATION,
-            action_text=(
-                "Escalate dashboard 503 errors to engineering incident owner "
-                "and request mitigation plan within four hours."
-            ),
-            owner_user_id=compliance_officer_user.id,
-            due_at=now + timedelta(hours=4),
-            status=NextActionStatusEnum.OPEN,
-            created_by_user_id=compliance_officer_user.id,
-            created_by_role="compliance_officer",
-        )
-
-        add_next_action_if_missing(
-            session,
-            issue_id=issue_401.id,
-            action_type=NextActionTypeEnum.ACCOUNT_ESCALATION,
-            action_text=(
-                "Prepare executive-facing incident update for Stark Industries "
-                "account sponsor."
-            ),
-            owner_user_id=customer_fraud_investigator_user.id,
-            due_at=now + timedelta(hours=3),
-            status=NextActionStatusEnum.IN_PROGRESS,
-            created_by_user_id=compliance_officer_user.id,
-            created_by_role="compliance_officer",
-        )
-
-        add_next_action_if_missing(
-            session,
-            issue_id=issue_402.id,
-            action_type=NextActionTypeEnum.TECHNICAL_INVESTIGATION,
-            action_text=(
-                "Compare webhook retry volume with customer endpoint rate limits "
-                "and recommend retry policy adjustment."
-            ),
-            owner_user_id=fraud_investigator_user.id,
-            due_at=now + timedelta(days=1),
-            status=NextActionStatusEnum.OPEN,
-            created_by_user_id=fraud_investigator_user.id,
-            created_by_role="fraud_investigator_user",
-        )
-
-        add_next_action_if_missing(
-            session,
-            issue_id=issue_501.id,
-            action_type=NextActionTypeEnum.CUSTOMER_UPDATE,
-            action_text=(
-                "Confirm with Wayne Enterprises that archived shipment exports "
-                "are visible and close the customer loop."
-            ),
-            owner_user_id=fraud_investigator_user.id,
-            due_at=now - timedelta(days=6),
-            status=NextActionStatusEnum.COMPLETED,
-            created_by_user_id=fraud_investigator_user.id,
-            created_by_role="fraud_investigator_user",
-        )
-
-        add_next_action_if_missing(
-            session,
-            issue_id=issue_601.id,
-            action_type=NextActionTypeEnum.TECHNICAL_INVESTIGATION,
-            action_text=(
-                "Inspect email queue metrics during evening processing and "
-                "identify whether worker scaling is required."
-            ),
-            owner_user_id=fraud_investigator_user.id,
-            due_at=now + timedelta(days=2),
-            status=NextActionStatusEnum.OPEN,
-            created_by_user_id=fraud_investigator_user.id,
-            created_by_role="fraud_investigator_user",
-        )
-
-        add_next_action_if_missing(
-            session,
-            issue_id=issue_701.id,
-            action_type=NextActionTypeEnum.SLA_REVIEW,
-            action_text=(
-                "Review SLA exposure for Cyberdyne because telemetry ingestion "
-                "is past due and blocked on customer logs."
-            ),
-            owner_user_id=compliance_officer_user.id,
-            due_at=now + timedelta(hours=2),
-            status=NextActionStatusEnum.OPEN,
-            created_by_user_id=compliance_officer_user.id,
-            created_by_role="compliance_officer",
-        )
-
-        add_next_action_if_missing(
-            session,
-            issue_id=issue_701.id,
-            action_type=NextActionTypeEnum.CUSTOMER_UPDATE,
-            action_text=(
-                "Ask Cyberdyne for latest device batch logs and confirm expected "
-                "delivery time."
-            ),
-            owner_user_id=fraud_investigator_user.id,
-            due_at=now + timedelta(hours=6),
-            status=NextActionStatusEnum.OPEN,
-            created_by_user_id=fraud_investigator_user.id,
-            created_by_role="fraud_investigator_user",
-        )
-
-        add_next_action_if_missing(
-            session,
-            issue_id=issue_702.id,
-            action_type=NextActionTypeEnum.TECHNICAL_INVESTIGATION,
-            action_text=(
-                "Review duplicate alert generation after device reconnect and "
-                "propose deduplication fix."
-            ),
-            owner_user_id=fraud_investigator_user.id,
-            due_at=now + timedelta(days=3),
-            status=NextActionStatusEnum.OPEN,
-            created_by_user_id=fraud_investigator_user.id,
-            created_by_role="fraud_investigator_user",
         )
 
         session.commit()
-
-    print("Seeded business data.")
+        print("Seeded NatWest business data.")
 
 
 if __name__ == "__main__":

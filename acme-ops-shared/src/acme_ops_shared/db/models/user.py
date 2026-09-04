@@ -1,17 +1,24 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, UniqueConstraint, func
+from acme_ops_shared.db.base import Base
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from ...db.base import Base
 
 
 class AppRole(Base):
     """
-    Represents a Role in the system, which can be assigned
-    to users for access control.
+    Represents a role in the NatWest investigation operating model.
     """
 
     __tablename__ = "app_roles"
@@ -30,7 +37,12 @@ class AppRole(Base):
     )
 
     description: Mapped[str | None] = mapped_column(
-        String(255),
+        Text,
+        nullable=True,
+    )
+
+    permissions: Mapped[dict | None] = mapped_column(
+        JSON,
         nullable=True,
     )
 
@@ -47,8 +59,7 @@ class AppRole(Base):
 
 class AppUser(Base):
     """
-    Represents a User in the system, which can be
-    authenticated and assigned roles for access control.
+    Represents a user in the NatWest investigation platform.
     """
 
     __tablename__ = "app_users"
@@ -60,7 +71,7 @@ class AppUser(Base):
     )
 
     keycloak_user_id: Mapped[str | None] = mapped_column(
-        String(255),
+        String(200),
         unique=True,
         nullable=True,
         index=True,
@@ -74,15 +85,15 @@ class AppUser(Base):
     )
 
     email: Mapped[str] = mapped_column(
-        String(255),
+        String(200),
         unique=True,
         nullable=False,
         index=True,
     )
 
-    full_name: Mapped[str | None] = mapped_column(
-        String(255),
-        nullable=True,
+    full_name: Mapped[str] = mapped_column(
+        String(200),
+        nullable=False,
     )
 
     role_id: Mapped[uuid.UUID] = mapped_column(
@@ -90,6 +101,11 @@ class AppUser(Base):
         ForeignKey("app_roles.id"),
         nullable=False,
         index=True,
+    )
+
+    team: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
     )
 
     is_active: Mapped[bool] = mapped_column(
