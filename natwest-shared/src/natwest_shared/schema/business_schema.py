@@ -1,169 +1,114 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from natwest_shared.common.enums import (
-    CustomerHealthEnum,
-    CustomerTierEnum,
-    IssuePriorityEnum,
-    IssueStatusEnum,
-    NextActionStatusEnum,
-    NextActionTypeEnum,
-)
-from pydantic import BaseModel, Field, field_validator
-
-
-class CustomerCreate(BaseModel):
-    """
-    Represents the data required to create a new customer
-    in the system.
-    """
-
-    name: str = Field(min_length=1, max_length=255)
-    industry: str | None = Field(default=None, max_length=100)
-    tier: CustomerTierEnum
-    account_owner_user_id: UUID | None = None
-    contract_value: Decimal | None = None
-    health_status: CustomerHealthEnum
-    notes: str | None = None
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class CustomerRead(BaseModel):
-    """
-    Represents the data of a customer as stored in the system,
-    including metadata such as creation and update timestamps.
-    """
+    """Read model for a NatWest customer profile."""
 
     id: UUID
-    name: str
-    industry: str | None
-    tier: CustomerTierEnum
-    account_owner_user_id: UUID | None
-    contract_value: str | None
-    health_status: CustomerHealthEnum
-    notes: str | None
-    deleted_at: datetime | None
+    full_name: str
+    date_of_birth: date
+    primary_account_number: str
+    primary_sort_code: str
+    kyc_status: str
+    kyc_last_reviewed: datetime | None = None
+    vulnerability_flag: bool
+    vulnerability_type: str | None = None
+    vulnerability_notes: str | None = None
+    customer_since: date
+    tier: str
     created_at: datetime
     updated_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
-    @field_validator("contract_value", mode="before")
+
+class AccountRead(BaseModel):
+    """Read model for a NatWest customer account."""
+
+    id: UUID
+    customer_id: UUID
+    account_number: str
+    sort_code: str
+    account_type: str
+    balance: str | None = None
+    status: str
+    opened_date: date
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("balance", mode="before")
     @classmethod
-    def convert_contract_value(cls, value: Decimal | str | None) -> str | None:
-        """
-        Serialize Decimal contract values as strings.
-        """
+    def stringify_balance(cls, value: Decimal | str | None) -> str | None:
         if value is None:
             return None
-
         return str(value)
 
 
-class IssueCreate(BaseModel):
-    """
-    Represents the data required to create a new issue in
-    the system.
-    """
-
-    customer_id: UUID
-    external_ref: str = Field(min_length=1, max_length=50)
-    title: str = Field(min_length=1, max_length=255)
-    description: str | None = None
-    status: IssueStatusEnum
-    priority: IssuePriorityEnum
-    assigned_to_user_id: UUID | None = None
-    source_system: str = Field(default="natwest-support", max_length=100)
-    opened_at: datetime
-    due_at: datetime | None = None
-
-
-class IssueRead(BaseModel):
-    """
-    Represents the data of an issue as stored in the system.
-    """
+class CaseRead(BaseModel):
+    """Read model for a NatWest case."""
 
     id: UUID
     customer_id: UUID
-    external_ref: str
-    title: str
-    description: str | None
-    status: IssueStatusEnum
-    priority: IssuePriorityEnum
-    assigned_to_user_id: UUID | None
-    source_system: str
-    opened_at: datetime
-    due_at: datetime | None
-    resolved_at: datetime | None
-    deleted_at: datetime | None
+    case_ref: str
+    case_type: str
+    status: str
+    priority: str
+    opened_date: datetime
+    last_updated: datetime
+    assigned_team: str
+    assigned_user_id: UUID | None = None
+    disputed_amount: str | None = None
+    merchant_name: str | None = None
+    merchant_category: str | None = None
+    consumer_duty_flag: bool
+    description: str
     created_at: datetime
-    updated_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
-
-class IssueUpdateCreate(BaseModel):
-    """
-    Represents the data required to create a new update for an
-    issue in the system.
-    """
-
-    issue_id: UUID
-    author_user_id: UUID | None = None
-    author_name: str | None = Field(default=None, max_length=255)
-    author_role: str | None = Field(default=None, max_length=50)
-    update_text: str = Field(min_length=1)
-    is_customer_visible: bool = True
+    @field_validator("disputed_amount", mode="before")
+    @classmethod
+    def stringify_disputed_amount(cls, value: Decimal | str | None) -> str | None:
+        if value is None:
+            return None
+        return str(value)
 
 
-class IssueUpdateRead(BaseModel):
-    """
-    Represents the data of an issue update as stored in the system.
-    """
+class CaseEventRead(BaseModel):
+    """Read model for a NatWest case event or timeline entry."""
 
     id: UUID
-    issue_id: UUID
-    author_user_id: UUID | None
-    author_name: str | None
-    author_role: str | None
-    update_text: str
-    is_customer_visible: bool
-    created_at: datetime
-
-    model_config = {"from_attributes": True}
-
-
-class NextActionCreate(BaseModel):
-    """
-    Represents the data required to create a new next action for an
-    issue in the system.
-    """
-
-    issue_id: UUID
-    action_type: NextActionTypeEnum
-    action_text: str = Field(min_length=1)
-    owner_user_id: UUID | None = None
-    due_at: datetime | None = None
+    case_id: UUID
+    event_type: str
+    event_description: str
+    is_internal: bool
     created_by_user_id: UUID | None = None
-    created_by_role: str | None = Field(default=None, max_length=50)
+    created_by_name: str | None = None
+    created_by_role: str | None = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class NextActionRead(BaseModel):
-    """
-    Represents the data of a next action as stored in the system.
-    """
+    """Read model for a natural next action on a case."""
 
     id: UUID
-    issue_id: UUID
-    action_type: NextActionTypeEnum
-    action_text: str
-    owner_user_id: UUID | None
-    due_at: datetime | None
-    status: NextActionStatusEnum
-    created_by_user_id: UUID | None
-    created_by_role: str | None
-    completed_at: datetime | None
+    case_id: UUID
+    action_type: str
+    description: str
+    due_date: datetime
+    status: str
+    assigned_user_id: UUID | None = None
+    created_by_user_id: UUID | None = None
+    created_by_role: str | None = None
+    completed_at: datetime | None = None
     created_at: datetime
-    updated_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)

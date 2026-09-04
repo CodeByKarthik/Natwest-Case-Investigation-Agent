@@ -4,5 +4,16 @@ version = "0.1.0"
 description = "NatWest Case Investigation Agent"
 requires-python = ">=3.11"
 
+[dependency-groups]
+dev = [
+    "pytest>=8.3.4",
+    "ruff>=0.16.6",
+]
+
 [tool.uv.workspace]
 members = ["natwest-backend", "natwest-mcp", "natwest-shared", "natwest-frontend"]
+
+[tool.mypy]
+ignore_missing_imports = true
+check_untyped_defs = false
+warn_unused_ignores = true

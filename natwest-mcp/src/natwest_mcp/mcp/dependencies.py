@@ -1,9 +1,9 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Annotated
 
-from fastmcp.dependencies import CurrentHeaders
+from fastmcp.dependencies import CurrentHeaders, Depends
 from fastmcp.exceptions import ToolError
-
 from natwest_shared.auth.keycloak import KeycloakTokenVerifier
 from natwest_shared.common.exceptions import AuthError, PermissionDenied
 from natwest_shared.db.repositories.business_read_repository import (
@@ -37,7 +37,7 @@ def extract_bearer_token(headers: dict[str, str]) -> str:
 
 @asynccontextmanager
 async def get_business_service(
-    headers: dict[str, str] = CurrentHeaders(),  # type: ignore[reportCallIssue]
+    headers: Annotated[dict[str, str], Depends(CurrentHeaders)],
 ) -> AsyncIterator[BusinessService]:
     """
     Build a permission-aware BusinessService for the current MCP request.

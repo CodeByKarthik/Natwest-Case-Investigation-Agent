@@ -5,41 +5,30 @@ from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
 from .business_tools import (
-    add_issue_update,
-    complete_next_action,
-    create_next_action,
-    get_customer_by_name,
-    get_issue_by_external_ref,
-    list_customers,
-    list_issue_updates,
-    list_next_actions,
-    list_open_issues,
-    update_issue_status,
-    update_next_action,
+    get_case_details,
+    get_case_timeline,
+    get_customer_accounts,
+    get_customer_profile,
+    get_next_actions,
+    list_cases,
+    manage_next_action,
+    update_case_status,
 )
 
-# ----- Define tool metadata (function, annotations) ------
-
 TOOLS: list[tuple[Callable[..., Any], ToolAnnotations | None]] = [
-    (list_customers, ToolAnnotations(readOnlyHint=True)),
-    (get_customer_by_name, ToolAnnotations(readOnlyHint=True)),
-    (list_open_issues, ToolAnnotations(readOnlyHint=True)),
-    (get_issue_by_external_ref, ToolAnnotations(readOnlyHint=True)),
-    (list_issue_updates, ToolAnnotations(readOnlyHint=True)),
-    (list_next_actions, ToolAnnotations(readOnlyHint=True)),
-    (update_issue_status, None),
-    (add_issue_update, None),
-    (create_next_action, None),
-    (update_next_action, None),
-    (complete_next_action, None),
-    # ---- Add new tools above this line ----
+    (list_cases, ToolAnnotations(read_only_hint=True)),
+    (get_customer_profile, ToolAnnotations(read_only_hint=True)),
+    (get_customer_accounts, ToolAnnotations(read_only_hint=True)),
+    (get_case_details, ToolAnnotations(read_only_hint=True)),
+    (get_case_timeline, ToolAnnotations(read_only_hint=True)),
+    (update_case_status, None),
+    (get_next_actions, ToolAnnotations(read_only_hint=True)),
+    (manage_next_action, None),
 ]
 
 
 def register_all_tools(mcp: FastMCP) -> None:
-    """
-    Register all business tools on the MCP server.
-    """
+    """Register all NatWest business tools on the MCP server."""
     for func, annotations in TOOLS:
         if annotations is not None:
             mcp.tool(name=func.__name__, annotations=annotations)(func)
