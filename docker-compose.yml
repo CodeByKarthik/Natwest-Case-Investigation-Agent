@@ -2,7 +2,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: acme-ops-backend/Dockerfile
+      dockerfile: natwest-backend/Dockerfile
     container_name: backend_natwest_ops
     environment:
       DATABASE_URL: ${DATABASE_URL_DOCKER}
@@ -65,7 +65,8 @@ services:
 
   db-init:
     build:
-      context: ./acme-ops-shared
+      context: .
+      dockerfile: natwest-shared/Dockerfile
     container_name: natwest_ops_db_init
     environment:
       DATABASE_URL: ${DATABASE_URL_DOCKER}
@@ -107,7 +108,7 @@ services:
         condition: service_healthy
 
   streamlit:
-    build: ./acme-ops-frontend
+    build: ./natwest-frontend
     container_name: frontend_natwest_ops
     ports:
       - "${STREAMLIT_PORT}:${STREAMLIT_PORT}"
@@ -132,9 +133,9 @@ services:
   mcp:
     build:
       context: .
-      dockerfile: acme-ops-mcp/Dockerfile
+      dockerfile: natwest-mcp/Dockerfile
     container_name: mcp_natwest_ops
-    command: ["python", "-m", "acme_ops_mcp.mcp.server"]
+    command: ["python", "-m", "natwest_mcp.mcp.server"]
     environment:
       DATABASE_URL: ${DATABASE_URL_DOCKER}
       KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER}

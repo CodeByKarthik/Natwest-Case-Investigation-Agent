@@ -217,9 +217,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-Acme Ops DB.session.sql
+NatWest DB.session.sql
 .env
-/acme-ops-agent/debug/
 .vscode/
 *.code-workspace
-/acme-ops-agent/src/acme_ops_agent/agent/test_runner.py

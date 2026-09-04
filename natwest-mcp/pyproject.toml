@@ -1,0 +1,24 @@
+[project]
+name = "natwest-mcp"
+version = "0.1.0"
+description = "NatWest Case Investigation MCP Service"
+readme = "README.md"
+authors = [
+    { name = "CodeByKarthik", email = "karthinottsuk@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "fastmcp>=3.3.1",
+    "mcp>=1.27.1",
+    "natwest-shared"
+]
+
+[tool.uv.sources]
+natwest-shared = { workspace = true }
+
+[project.scripts]
+natwest-mcp = "natwest_mcp:main"
+
+[build-system]
+requires = ["uv_build>=0.11.7,<0.12.0"]
+build-backend = "uv_build"
