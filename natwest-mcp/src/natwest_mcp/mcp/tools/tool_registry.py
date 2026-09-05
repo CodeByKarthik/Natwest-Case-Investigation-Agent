@@ -11,11 +11,13 @@ from .business_tools import (
     get_customer_profile,
     get_next_actions,
     list_cases,
+    list_customers,
     manage_next_action,
     update_case_status,
 )
 
 TOOLS: list[tuple[Callable[..., Any], ToolAnnotations | None]] = [
+    (list_customers, ToolAnnotations(read_only_hint=True)),
     (list_cases, ToolAnnotations(read_only_hint=True)),
     (get_customer_profile, ToolAnnotations(read_only_hint=True)),
     (get_customer_accounts, ToolAnnotations(read_only_hint=True)),

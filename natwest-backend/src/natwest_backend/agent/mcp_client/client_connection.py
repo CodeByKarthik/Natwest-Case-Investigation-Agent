@@ -72,7 +72,7 @@ class MCPConnection:
         result = await self._session.call_tool(name, arguments)
         response = extract_text_content(result.content)
 
-        if result.isError:
+        if getattr(result, "is_error", False):
             logger.warning("MCP tool %s returned error: %s", name, response)
             return f"Error: {response}"
 

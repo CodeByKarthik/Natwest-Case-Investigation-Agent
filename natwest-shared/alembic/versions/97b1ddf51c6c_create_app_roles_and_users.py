@@ -44,7 +44,16 @@ def upgrade() -> None:
         sa.Column("email", sa.String(length=255), nullable=False),
         sa.Column("full_name", sa.String(length=255), nullable=True),
         sa.Column("role_id", sa.UUID(), nullable=False),
-        sa.Column("team", sa.String(length=50), nullable=True),
+        sa.Column(
+            "team",
+            sa.Enum(
+                "customer_support",
+                "fraud",
+                "case_management",
+                name="staff_team",
+            ),
+            nullable=False,
+        ),
         sa.Column("is_active", sa.Boolean(), nullable=False),
         sa.Column(
             "created_at",

@@ -35,8 +35,8 @@ async def connect_mcp(
     async with http_client:
         async with streamable_http_client(
             url=url,
-            http_client=http_client,
-        ) as (read_stream, write_stream, _):
+            http_client=http_client,  # type: ignore[arg-type]
+        ) as (read_stream, write_stream):
             async with ClientSession(read_stream, write_stream) as session:
                 await session.initialize()
                 logger.info("MCP session established: %s", url)

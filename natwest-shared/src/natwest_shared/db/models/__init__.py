@@ -4,6 +4,8 @@ from natwest_shared.db.models.business import (
     CaseEvent,
     Customer,
     NextAction,
+    SourceSystemRecord,
+    VulnerabilityRegister,
 )
 from natwest_shared.db.models.user import AppRole, AppUser
 
@@ -15,4 +17,6 @@ __all__ = [
     "CaseEvent",
     "Customer",
     "NextAction",
+    "SourceSystemRecord",
+    "VulnerabilityRegister",
 ]

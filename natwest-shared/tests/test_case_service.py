@@ -25,12 +25,11 @@ class FakeReadRepository:
             id=uuid4(),
             full_name="Jane Doe",
             date_of_birth=datetime(1990, 1, 1, tzinfo=UTC).date(),
-            primary_account_number="12345678",
-            primary_sort_code="12-34-56",
+            email="jane.doe@example.com",
+            phone="+44 7700 900000",
             kyc_status="verified",
             kyc_last_reviewed=datetime(2024, 1, 1, tzinfo=UTC),
-            vulnerability_flag=True,
-            vulnerability_type="health",
+            is_flagged=True,
             customer_since=datetime(2018, 1, 1, tzinfo=UTC).date(),
             tier="premium",
         )
@@ -41,10 +40,9 @@ class FakeReadRepository:
             case_type="fraud",
             status="open",
             priority="p1",
-            opened_date=datetime(2025, 1, 15, tzinfo=UTC),
-            last_updated=datetime(2025, 1, 16, tzinfo=UTC),
-            assigned_team="fraud",
             assigned_user_id=uuid4(),
+            opened_date=datetime(2025, 1, 15, tzinfo=UTC),
+            updated_at=datetime(2025, 1, 16, tzinfo=UTC),
             disputed_amount=1500,
             merchant_name="Contoso",
             consumer_duty_flag=True,
@@ -55,11 +53,11 @@ class FakeReadRepository:
             CaseEvent(
                 id=uuid4(),
                 case_id=self.case.id,
-                event_type="status_change",
-                event_description="Opened for review",
-                is_internal=False,
-                created_by_name="Analyst",
-                created_by_role="fraud_investigator",
+                event_type="system_alert",
+                event_description="Fraud engine flagged the transaction",
+                created_by_user_id=None,
+                created_by_system="fraud_engine",
+                source_record_id=None,
                 created_at=datetime(2025, 1, 16, tzinfo=UTC),
             )
         ]
@@ -73,7 +71,8 @@ class FakeReadRepository:
                 status="open",
                 assigned_user_id=uuid4(),
                 created_by_user_id=uuid4(),
-                created_by_role="compliance_officer",
+                created_at=datetime(2025, 1, 16, tzinfo=UTC),
+                updated_at=datetime(2025, 1, 16, tzinfo=UTC),
             )
         ]
 
@@ -133,10 +132,9 @@ class FakeWriteRepository:
             case_type="dispute",
             status="open",
             priority="p2",
-            opened_date=datetime(2025, 2, 1, tzinfo=UTC),
-            last_updated=datetime(2025, 2, 1, tzinfo=UTC),
-            assigned_team="fraud",
             assigned_user_id=uuid4(),
+            opened_date=datetime(2025, 2, 1, tzinfo=UTC),
+            updated_at=datetime(2025, 2, 1, tzinfo=UTC),
             disputed_amount=400,
             merchant_name="Northwind",
             consumer_duty_flag=True,
@@ -152,7 +150,8 @@ class FakeWriteRepository:
             status="open",
             assigned_user_id=uuid4(),
             created_by_user_id=uuid4(),
-            created_by_role="compliance_officer",
+            created_at=datetime(2025, 2, 1, tzinfo=UTC),
+            updated_at=datetime(2025, 2, 1, tzinfo=UTC),
         )
 
     def update_case_status(
@@ -175,6 +174,7 @@ class FakeWriteRepository:
         case_id=None,
         action_id=None,
         fields=None,  # type: ignore
+        created_by_user_id=None,  # type: ignore
     ):
         if operation == "create":
             self.action.id = uuid4()
@@ -192,18 +192,19 @@ def test_natwest_roles_and_permissions_are_configured() -> None:
     assert {role.value for role in AppRole} == {
         "customer_support",
         "fraud_investigator",
-        "compliance_officer",
+        "case_manager",
     }
     assert READ_ROLES == {
         AppRole.CUSTOMER_SUPPORT,
         AppRole.FRAUD_INVESTIGATOR,
-        AppRole.COMPLIANCE_OFFICER,
+        AppRole.CASE_MANAGER,
     }
     assert WRITE_ROLES == {
         AppRole.FRAUD_INVESTIGATOR,
-        AppRole.COMPLIANCE_OFFICER,
+        AppRole.CASE_MANAGER,
     }
-    assert ADMIN_ROLES == {AppRole.COMPLIANCE_OFFICER}
+    assert ADMIN_ROLES == {AppRole.CASE_MANAGER}
+    assert "assigned_user_id" in Case.__table__.columns
 
 
 def test_business_service_list_cases_filters_support_visibility() -> None:
@@ -263,8 +264,8 @@ def test_business_service_manage_next_action_supports_create_update_and_complete
         write_repository=cast(BusinessWriteRepository, FakeWriteRepository()),
         auth_context=AuthContext(
             app_user_id=str(uuid4()),
-            username="compliance",
-            role=AppRole.COMPLIANCE_OFFICER,
+            username="case_manager",
+            role=AppRole.CASE_MANAGER,
         ),
     )
 
@@ -275,7 +276,6 @@ def test_business_service_manage_next_action_supports_create_update_and_complete
             "action_type": NextActionTypeEnum.REQUEST_DOCUMENTS,
             "description": "Request recent bank statements",
             "due_date": datetime(2025, 2, 12, tzinfo=UTC),
-            "assigned_user_id": uuid4(),
         },
     )
     updated = service.manage_next_action(

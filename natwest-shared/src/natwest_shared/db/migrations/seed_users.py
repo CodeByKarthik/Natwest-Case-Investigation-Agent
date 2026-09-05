@@ -6,15 +6,15 @@ from ..session import SessionLocal
 ROLES = [
     (
         "customer_support",
-        "Handles initial customer contact and routine queries. Read-only access to support-visible cases. Cannot see internal notes or fraud cases.",
+        "Handles initial customer contact and routine queries. Can view all issues but cannot update case status.",
     ),
     (
         "fraud_investigator",
-        "Investigates disputed transactions and suspected scams. Can update status on fraud and dispute cases. Cannot manage next actions or modify compliance records.",
+        "Investigates disputed transactions and suspected scams. Can view all issues and update case status.",
     ),
     (
-        "compliance_officer",
-        "Oversees case quality, vulnerability handling, and regulatory reporting. Full access to all cases, events, and write operations.",
+        "case_manager",
+        "Manages case handling, escalations, and next actions. Can view all issues, update case status, and manage next actions.",
     ),
 ]
 
@@ -24,18 +24,21 @@ USERS = [
         "email": "customer_support@natwest.test",
         "full_name": "Customer Support User",
         "role": "customer_support",
+        "team": "customer_support",
     },
     {
         "username": "fraud_investigator",
         "email": "fraud_investigator@natwest.test",
         "full_name": "Fraud Investigator User",
         "role": "fraud_investigator",
+        "team": "fraud",
     },
     {
-        "username": "compliance_officer",
-        "email": "compliance_officer@natwest.test",
-        "full_name": "Compliance Officer User",
-        "role": "compliance_officer",
+        "username": "case_manager",
+        "email": "case_manager@natwest.test",
+        "full_name": "Case Manager User",
+        "role": "case_manager",
+        "team": "case_management",
     },
 ]
 
@@ -72,6 +75,7 @@ def main() -> None:
                         email=user_data["email"],
                         full_name=user_data["full_name"],
                         role_id=role.id,
+                        team=user_data["team"],
                         is_active=True,
                     )
                 )

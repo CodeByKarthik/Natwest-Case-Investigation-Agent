@@ -111,7 +111,13 @@ def create_input_guardrail_node(llm: ChatOpenAI) -> Any:
                 config=config,
             )
 
-            verdict = content_to_text(getattr(response, "content")).strip().upper()  # type: ignore[arg-type]
+            verdict_raw = content_to_text(getattr(response, "content")).strip().upper()  # type: ignore[arg-type]
+            # Only block on an unambiguous verdict — strip surrounding quotes
+            # and take the first word so trailing commentary cannot trigger
+            # a false positive.
+            verdict = (
+                verdict_raw.strip('"').strip("'").split()[0] if verdict_raw else ""
+            )
 
             if verdict == "BLOCKED":
                 logger.warning(
@@ -122,6 +128,12 @@ def create_input_guardrail_node(llm: ChatOpenAI) -> Any:
                     "route": "blocked",
                     "messages": [AIMessage(content=DENIAL_MESSAGE)],
                 }
+            if verdict != "SAFE":
+                logger.warning(
+                    "Guardrail returned unexpected verdict '%s' — allowing request | input: %.100s",
+                    verdict_raw[:50],
+                    user_text,
+                )
 
         except Exception:
             # If the guardrail LLM call fails, allow the request

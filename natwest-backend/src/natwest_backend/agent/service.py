@@ -172,6 +172,7 @@ class AgentService:
                 {
                     "messages": initial_messages,
                     "route": "",
+                    "category": "",
                     "tool_call_count": 0,
                     "skill_context": "",
                 },

@@ -6,9 +6,11 @@ from natwest_shared.db.models.business import (
     CaseEvent,
     Customer,
     NextAction,
+    VulnerabilityRegister,
 )
+from natwest_shared.db.models.user import AppUser
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 
 class BusinessReadRepository:
@@ -20,15 +22,25 @@ class BusinessReadRepository:
     def list_customers(
         self,
         *,
+        is_flagged: bool | None = None,
+        kyc_status: str | None = None,
+        tier: str | None = None,
+        name_contains: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[Customer]:
-        stmt = (
-            select(Customer)
-            .order_by(Customer.full_name.asc())
-            .limit(limit)
-            .offset(offset)
-        )
+        stmt = select(Customer)
+
+        if is_flagged is not None:
+            stmt = stmt.where(Customer.is_flagged.is_(is_flagged))
+        if kyc_status is not None:
+            stmt = stmt.where(Customer.kyc_status == kyc_status)
+        if tier is not None:
+            stmt = stmt.where(Customer.tier == tier)
+        if name_contains is not None:
+            stmt = stmt.where(Customer.full_name.ilike(f"%{name_contains}%"))
+
+        stmt = stmt.order_by(Customer.full_name.asc()).limit(limit).offset(offset)
         return list(self.session.scalars(stmt).all())
 
     def get_customer_by_name(
@@ -44,7 +56,18 @@ class BusinessReadRepository:
         return self.session.scalar(stmt)
 
     def get_customer_profile(self, *, customer_id: UUID) -> Customer | None:
-        return self.session.get(Customer, customer_id)
+        """Fetch a customer with the full vulnerability register eagerly loaded
+        (including the source system records behind each signal)."""
+        stmt = (
+            select(Customer)
+            .where(Customer.id == customer_id)
+            .options(
+                selectinload(Customer.vulnerability_signals).selectinload(
+                    VulnerabilityRegister.source_record
+                )
+            )
+        )
+        return self.session.scalar(stmt)
 
     def get_customer_accounts(self, *, customer_id: UUID) -> list[Account]:
         stmt = (
@@ -68,20 +91,18 @@ class BusinessReadRepository:
                 stmt = stmt.where(Case.status == filters["status"])
             if filters.get("priority") is not None:
                 stmt = stmt.where(Case.priority == filters["priority"])
-            if filters.get("assigned_team") is not None:
-                stmt = stmt.where(Case.assigned_team == filters["assigned_team"])
-            if filters.get("assigned_user_id") is not None:
-                stmt = stmt.where(Case.assigned_user_id == filters["assigned_user_id"])
             if filters.get("case_type") is not None:
                 stmt = stmt.where(Case.case_type == filters["case_type"])
             if filters.get("customer_id") is not None:
                 stmt = stmt.where(Case.customer_id == filters["customer_id"])
+            if filters.get("assigned_user_id") is not None:
+                stmt = stmt.where(Case.assigned_user_id == filters["assigned_user_id"])
             if filters.get("consumer_duty_flag") is not None:
                 stmt = stmt.where(
                     Case.consumer_duty_flag.is_(filters["consumer_duty_flag"])
                 )
 
-        stmt = stmt.order_by(Case.last_updated.desc()).limit(limit).offset(offset)
+        stmt = stmt.order_by(Case.updated_at.desc()).limit(limit).offset(offset)
         return list(self.session.scalars(stmt).all())
 
     def get_case_details(
@@ -94,9 +115,16 @@ class BusinessReadRepository:
         return None
 
     def get_case_timeline(self, *, case_id: UUID) -> list[CaseEvent]:
+        """Fetch the chronological timeline, eagerly loading source system
+        records for system events and the authoring user (with role) for
+        user events."""
         stmt = (
             select(CaseEvent)
             .where(CaseEvent.case_id == case_id)
+            .options(
+                selectinload(CaseEvent.source_record),
+                selectinload(CaseEvent.created_by_user).selectinload(AppUser.role),
+            )
             .order_by(CaseEvent.created_at.asc())
         )
         return list(self.session.scalars(stmt).all())
@@ -105,72 +133,6 @@ class BusinessReadRepository:
         stmt = (
             select(NextAction)
             .where(NextAction.case_id == case_id)
-            .order_by(
-                NextAction.due_date.asc().nulls_last(), NextAction.created_at.desc()
-            )
+            .order_by(NextAction.due_date.asc(), NextAction.created_at.desc())
         )
-        return list(self.session.scalars(stmt).all())
-
-    def list_open_issues(
-        self,
-        *,
-        customer_id: UUID,
-        limit: int = 50,
-        offset: int = 0,
-    ) -> list[Case]:
-        stmt = (
-            select(Case)
-            .where(Case.customer_id == customer_id)
-            .where(
-                Case.status.in_(
-                    ["open", "under_investigation", "pending_customer", "escalated"]
-                )
-            )
-            .order_by(Case.priority.asc(), Case.last_updated.desc())
-            .limit(limit)
-            .offset(offset)
-        )
-        return list(self.session.scalars(stmt).all())
-
-    def get_issue_by_external_ref(self, *, external_ref: str) -> Case | None:
-        return self.session.scalar(select(Case).where(Case.case_ref == external_ref))
-
-    def list_issue_updates(
-        self,
-        *,
-        issue_id: UUID,
-        customer_visible_only: bool = False,
-        limit: int = 50,
-        offset: int = 0,
-    ) -> list[CaseEvent]:
-        stmt = (
-            select(CaseEvent)
-            .where(CaseEvent.case_id == issue_id)
-            .order_by(CaseEvent.created_at.desc())
-            .limit(limit)
-            .offset(offset)
-        )
-        if customer_visible_only:
-            stmt = stmt.where(CaseEvent.is_internal.is_(False))
-        return list(self.session.scalars(stmt).all())
-
-    def list_next_actions(
-        self,
-        *,
-        issue_id: UUID,
-        status: str | None = None,
-        limit: int = 50,
-        offset: int = 0,
-    ) -> list[NextAction]:
-        stmt = (
-            select(NextAction)
-            .where(NextAction.case_id == issue_id)
-            .order_by(
-                NextAction.due_date.asc().nulls_last(), NextAction.created_at.desc()
-            )
-            .limit(limit)
-            .offset(offset)
-        )
-        if status is not None:
-            stmt = stmt.where(NextAction.status == status)
         return list(self.session.scalars(stmt).all())

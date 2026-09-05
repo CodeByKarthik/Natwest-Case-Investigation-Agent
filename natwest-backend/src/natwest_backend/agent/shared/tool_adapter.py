@@ -170,7 +170,7 @@ async def create_mcp_tools(connection: MCPConnection) -> list[BaseTool]:
     langchain_tools: list[BaseTool] = []
 
     for tool_def in mcp_tools:
-        schema = tool_def.inputSchema or {"properties": {}, "required": []}
+        schema = tool_def.input_schema or {"properties": {}, "required": []}
 
         try:
             args_model = mcp_schema_to_pydantic(tool_def.name, schema)

@@ -3,19 +3,24 @@
   "enabled": true,
   "sslRequired": "none",
   "displayName": "NatWest Case Investigation",
+  "accessTokenLifespan": 3600,
+  "ssoSessionIdleTimeout": 28800,
+  "ssoSessionMaxLifespan": 28800,
+  "clientSessionIdleTimeout": 28800,
+  "clientSessionMaxLifespan": 28800,
   "roles": {
     "realm": [
       {
         "name": "customer_support",
-        "description": "Handles initial customer contact and routine queries. Read-only access to support-visible cases. Cannot see internal notes or fraud cases."
+        "description": "Handles initial customer contact and routine queries. Can view all issues but cannot update case status."
       },
       {
         "name": "fraud_investigator",
-        "description": "Investigates disputed transactions and suspected scams. Can update status on fraud and dispute cases. Cannot manage next actions or modify compliance records."
+        "description": "Investigates disputed transactions and suspected scams. Can view all issues and update case status."
       },
       {
-        "name": "compliance_officer",
-        "description": "Oversees case quality, vulnerability handling, and regulatory reporting. Full access to all cases, events, and write operations."
+        "name": "case_manager",
+        "description": "Manages case handling, escalations, and next actions. Can view all issues, update case status, and manage next actions."
       }
     ]
   },
@@ -98,11 +103,11 @@
       "realmRoles": ["fraud_investigator"]
     },
     {
-      "username": "compliance_officer",
+      "username": "case_manager",
       "enabled": true,
-      "email": "compliance_officer@natwest.local",
-      "firstName": "Compliance",
-      "lastName": "Officer",
+      "email": "case_manager@natwest.local",
+      "firstName": "Case",
+      "lastName": "Manager",
       "credentials": [
         {
           "type": "password",
@@ -110,7 +115,7 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["compliance_officer"]
+      "realmRoles": ["case_manager"]
     }
   ]
 }

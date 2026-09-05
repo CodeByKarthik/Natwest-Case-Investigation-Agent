@@ -7,6 +7,7 @@ from natwest_mcp.mcp.tools.business_tools import (
     get_case_details,
     get_customer_profile,
     list_cases,
+    list_customers,
     manage_next_action,
     update_case_status,
 )
@@ -26,17 +27,14 @@ class FakeMCPService:
             id=uuid4(),
             full_name="Aisha Rahman",
             date_of_birth=datetime(1988, 6, 14, tzinfo=UTC).date(),
-            primary_account_number="1234567890",
-            primary_sort_code="040004",
+            email="aisha.rahman@example.com",
+            phone="+44 7700 900101",
             customer_since=datetime(2018, 2, 1, tzinfo=UTC).date(),
             kyc_status="verified",
             kyc_last_reviewed=datetime(2025, 1, 1, tzinfo=UTC),
-            vulnerability_flag=False,
-            vulnerability_type=None,
-            vulnerability_notes=None,
+            is_flagged=False,
             tier="premium",
             created_at=datetime(2024, 1, 1, tzinfo=UTC),
-            updated_at=datetime(2025, 1, 16, tzinfo=UTC),
         )
         self.account = Account(
             id=uuid4(),
@@ -55,13 +53,11 @@ class FakeMCPService:
             case_type="fraud",
             status="open",
             priority="p1",
-            opened_date=datetime(2025, 1, 15, tzinfo=UTC),
-            last_updated=datetime(2025, 1, 16, tzinfo=UTC),
-            assigned_team="fraud",
             assigned_user_id=uuid4(),
+            opened_date=datetime(2025, 1, 15, tzinfo=UTC),
+            updated_at=datetime(2025, 1, 16, tzinfo=UTC),
             disputed_amount=Decimal("1500.00"),
             merchant_name="Contoso",
-            merchant_category="retail",
             consumer_duty_flag=True,
             description="Suspicious card use",
             created_at=datetime(2025, 1, 15, tzinfo=UTC),
@@ -70,12 +66,11 @@ class FakeMCPService:
             CaseEvent(
                 id=uuid4(),
                 case_id=self.case.id,
-                event_type="status_change",
-                event_description="Case opened for investigation",
-                is_internal=False,
-                created_by_user_id=uuid4(),
-                created_by_name="Fraud Investigator User",
-                created_by_role="fraud_investigator",
+                event_type="system_alert",
+                event_description="Fraud engine flagged the transaction",
+                created_by_user_id=None,
+                created_by_system="fraud_engine",
+                source_record_id=None,
                 created_at=datetime(2025, 1, 16, tzinfo=UTC),
             )
         ]
@@ -88,13 +83,16 @@ class FakeMCPService:
             status="open",
             assigned_user_id=uuid4(),
             created_by_user_id=uuid4(),
-            created_by_role="compliance_officer",
             completed_at=None,
             created_at=datetime(2025, 1, 17, tzinfo=UTC),
+            updated_at=datetime(2025, 1, 17, tzinfo=UTC),
         )
 
     def get_customer_by_name(self, *, name):
         return self.customer
+
+    def list_customers(self, **_kwargs: object) -> list[Customer]:
+        return [self.customer]
 
     def get_customer_profile(self, *, customer_id):
         return self.customer
@@ -130,6 +128,7 @@ def test_registry_exposes_expected_natwest_tool_names() -> None:
     tool_names = {func.__name__ for func, _ in TOOLS}
 
     expected = {
+        "list_customers",
         "list_cases",
         "get_customer_profile",
         "get_customer_accounts",
@@ -152,6 +151,10 @@ def test_customer_and_case_tools_return_natwest_read_models() -> None:
     assert customer is not None
     assert customer.full_name == "Aisha Rahman"
     assert customer.tier == "premium"
+
+    customers = asyncio.run(list_customers(name_contains="Aisha", service=service))
+    assert len(customers) == 1
+    assert customers[0].email == "aisha.rahman@example.com"
 
     case = asyncio.run(get_case_details(case_id=service.case.id, service=service))
     assert case is not None

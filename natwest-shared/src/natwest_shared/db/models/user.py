@@ -12,6 +12,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -103,9 +104,14 @@ class AppUser(Base):
         index=True,
     )
 
-    team: Mapped[str | None] = mapped_column(
-        String(50),
-        nullable=True,
+    team: Mapped[str] = mapped_column(
+        SAEnum(
+            "customer_support",
+            "fraud",
+            "case_management",
+            name="staff_team",
+        ),
+        nullable=False,
     )
 
     is_active: Mapped[bool] = mapped_column(

@@ -1,17 +1,27 @@
+from enum import StrEnum
+
 # --- Guardrail routes ---
 
 BLOCKED_ROUTE = "blocked"
 SAFE_ROUTE = "safe"
 
-# --- Skill routes ---
 
-SKILL_ROUTES: dict[str, str] = {
-    "escalation_summary": "escalation_summary",
-    # "next_skill": "next_skill_node_name",   ← add new skills here
-}
+class IntentCategory(StrEnum):
+    """
+    User intent categories produced by the router's LLM classification.
 
-# --- General route ---
+    The router only classifies — it never extracts identifiers and never
+    invokes workflows. The agent reads this category from the graph state
+    and binds the appropriate tools.
+    """
 
-DEFAULT_ROUTE = "general"
+    INVESTIGATION = "investigation"
+    OPERATIONAL_QUERY = "operational_query"
+    UNCLEAR = "unclear"
 
-VALID_ROUTES = set(SKILL_ROUTES.keys()) | {DEFAULT_ROUTE}
+
+VALID_CATEGORIES = set(IntentCategory)
+
+# Fallback when the router LLM returns something unexpected — asking a
+# clarifying question is safer than guessing.
+DEFAULT_CATEGORY = IntentCategory.UNCLEAR
