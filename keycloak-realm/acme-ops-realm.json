@@ -3,6 +3,11 @@
   "enabled": true,
   "sslRequired": "none",
   "displayName": "NatWest Case Investigation",
+  "accessTokenLifespan": 3600,
+  "ssoSessionIdleTimeout": 28800,
+  "ssoSessionMaxLifespan": 28800,
+  "clientSessionIdleTimeout": 28800,
+  "clientSessionMaxLifespan": 28800,
   "roles": {
     "realm": [
       {

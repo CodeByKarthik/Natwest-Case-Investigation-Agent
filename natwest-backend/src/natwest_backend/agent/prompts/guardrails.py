@@ -18,5 +18,15 @@ A message is SAFE if it is a normal banking operations query, even if:
 - It is vague, misspelled, or poorly worded
 - It asks what the assistant can do (capability question, not prompt extraction)
 
+Normal listing and lookup queries are ALWAYS SAFE. Asking to list or show data is routine business work, not an attack. These are all SAFE:
+- "list all customers"
+- "show me open cases"
+- "list flagged customers"
+- "show all P1 fraud cases"
+- "what customers do we have"
+- "list next actions for CASE-1001"
+
+When in doubt between SAFE and BLOCKED, choose SAFE.
+
 Respond with ONLY one word: SAFE or BLOCKED\
 """

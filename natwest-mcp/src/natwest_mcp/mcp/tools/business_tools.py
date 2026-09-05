@@ -21,6 +21,44 @@ def _raise_as_tool_error(exc: Exception) -> None:
     raise ToolError(str(exc)) from exc
 
 
+async def list_customers(
+    is_flagged: Annotated[
+        bool | None,
+        Field(description="Filter for customers with an active vulnerability signal"),
+    ] = None,
+    kyc_status: Annotated[
+        str | None,
+        Field(description="Filter: verified, pending_review, expired, not_started"),
+    ] = None,
+    tier: Annotated[
+        str | None, Field(description="Filter: standard, premium, private_banking")
+    ] = None,
+    name_contains: Annotated[
+        str | None,
+        Field(description="Case-insensitive partial match on customer full name"),
+    ] = None,
+    limit: Annotated[int, Field(ge=1, le=100)] = 50,
+    offset: Annotated[int, Field(ge=0)] = 0,
+    *,
+    service: BusinessService = Depends(get_business_service),
+) -> list[CustomerRead]:
+    """Browse customers when you don't have a customer_id. Supports filters
+    for vulnerability flag, KYC status, tier, and partial name match."""
+    business_service = cast(BusinessService, service)
+    try:
+        customers = business_service.list_customers(
+            is_flagged=is_flagged,
+            kyc_status=kyc_status,
+            tier=tier,
+            name_contains=name_contains,
+            limit=limit,
+            offset=offset,
+        )
+    except (ValueError, PermissionDenied) as exc:
+        _raise_as_tool_error(exc)
+    return [CustomerRead.from_customer(customer) for customer in customers]
+
+
 async def list_cases(
     status: Annotated[
         str | None,

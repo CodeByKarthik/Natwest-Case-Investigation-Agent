@@ -17,6 +17,7 @@ DEFAULT_TOOL_CACHE_TTL = 300  # 5 minutes — other read-only results
 
 # Tools that are safe to cache (read-only, no side effects)
 CACHEABLE_TOOLS: dict[str, int] = {
+    "list_customers": CUSTOMER_CACHE_TTL,
     "get_customer_profile": CUSTOMER_CACHE_TTL,
     "get_customer_accounts": CUSTOMER_CACHE_TTL,
     "list_cases": DEFAULT_TOOL_CACHE_TTL,

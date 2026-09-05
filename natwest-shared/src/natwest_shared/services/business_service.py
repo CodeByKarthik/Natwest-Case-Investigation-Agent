@@ -5,8 +5,10 @@ from natwest_shared.common.enums import (
     AppRole,
     CaseStatusEnum,
     CaseTypeEnum,
+    KycStatusEnum,
     NextActionStatusEnum,
     NextActionTypeEnum,
+    TierEnum,
 )
 from natwest_shared.common.exceptions import PermissionDenied
 from natwest_shared.db.models.business import (
@@ -45,6 +47,32 @@ class BusinessService:
         self.auth_context = auth_context
 
     # ----- Reads (all roles) -----
+
+    def list_customers(
+        self,
+        *,
+        is_flagged: bool | None = None,
+        kyc_status: str | None = None,
+        tier: str | None = None,
+        name_contains: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[Customer]:
+        require_role(self.auth_context, READ_ROLES)
+
+        if kyc_status is not None and kyc_status not in set(KycStatusEnum):
+            raise ValueError(f"Invalid KYC status filter: {kyc_status}")
+        if tier is not None and tier not in set(TierEnum):
+            raise ValueError(f"Invalid customer tier filter: {tier}")
+
+        return self.read_repository.list_customers(
+            is_flagged=is_flagged,
+            kyc_status=kyc_status,
+            tier=tier,
+            name_contains=name_contains,
+            limit=limit,
+            offset=offset,
+        )
 
     def get_customer_profile(self, *, customer_id: UUID) -> Customer | None:
         require_role(self.auth_context, READ_ROLES)

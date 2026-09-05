@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from natwest_backend.agent.graph.routing import BLOCKED_ROUTE
+from natwest_backend.agent.graph.routing import BLOCKED_ROUTE, IntentCategory
 from natwest_backend.agent.shared.skill_limits import DEFAULT_AGENT_LIMITS
 from natwest_backend.agent.shared.state import AgentState
 from langchain_core.messages import AIMessage
@@ -18,14 +18,6 @@ def route_after_guardrail(state: AgentState) -> Literal["safe", "blocked"]:
     if state["route"] == BLOCKED_ROUTE:
         return "blocked"
     return "safe"
-
-
-def route_after_router(state: AgentState) -> str:
-    """
-    Read the route set by the router node and return it
-    as the conditional edge key.
-    """
-    return state["route"]
 
 
 def should_continue(
@@ -51,3 +43,16 @@ def should_continue(
         return "tools"
 
     return "end"
+
+
+def route_after_tools(state: AgentState) -> Literal["agent", "finalize_investigation"]:
+    """
+    After tool execution, decide whether to continue the ReAct loop or
+    finalize immediately.
+
+    The investigation workflow tool's output is the final report — no
+    further LLM turn should be allowed to rewrite it.
+    """
+    if state["category"] == IntentCategory.INVESTIGATION.value:
+        return "finalize_investigation"
+    return "agent"

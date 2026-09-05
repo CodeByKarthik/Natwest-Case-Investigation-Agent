@@ -7,6 +7,7 @@ from natwest_mcp.mcp.tools.business_tools import (
     get_case_details,
     get_customer_profile,
     list_cases,
+    list_customers,
     manage_next_action,
     update_case_status,
 )
@@ -90,6 +91,9 @@ class FakeMCPService:
     def get_customer_by_name(self, *, name):
         return self.customer
 
+    def list_customers(self, **_kwargs: object) -> list[Customer]:
+        return [self.customer]
+
     def get_customer_profile(self, *, customer_id):
         return self.customer
 
@@ -124,6 +128,7 @@ def test_registry_exposes_expected_natwest_tool_names() -> None:
     tool_names = {func.__name__ for func, _ in TOOLS}
 
     expected = {
+        "list_customers",
         "list_cases",
         "get_customer_profile",
         "get_customer_accounts",
@@ -146,6 +151,10 @@ def test_customer_and_case_tools_return_natwest_read_models() -> None:
     assert customer is not None
     assert customer.full_name == "Aisha Rahman"
     assert customer.tier == "premium"
+
+    customers = asyncio.run(list_customers(name_contains="Aisha", service=service))
+    assert len(customers) == 1
+    assert customers[0].email == "aisha.rahman@example.com"
 
     case = asyncio.run(get_case_details(case_id=service.case.id, service=service))
     assert case is not None

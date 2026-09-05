@@ -41,6 +41,9 @@ def create_llm() -> BaseChatModel:
         api_key=(
             SecretStr(settings.openai_api_key) if settings.openai_api_key else None
         ),
+        # Models like gpt-5.6-luna reject function tools unless reasoning
+        # effort is explicitly disabled on the chat-completions endpoint.
+        reasoning_effort="none",
         callbacks=[_call_logger],
     )
 

@@ -13,6 +13,27 @@ class AppRole(StrEnum):
     CASE_MANAGER = "case_manager"
 
 
+class KycStatusEnum(StrEnum):
+    """
+    Enum representing customer KYC review states.
+    """
+
+    VERIFIED = "verified"
+    PENDING_REVIEW = "pending_review"
+    EXPIRED = "expired"
+    NOT_STARTED = "not_started"
+
+
+class TierEnum(StrEnum):
+    """
+    Enum representing customer tiers.
+    """
+
+    STANDARD = "standard"
+    PREMIUM = "premium"
+    PRIVATE_BANKING = "private_banking"
+
+
 class CaseTypeEnum(StrEnum):
     """
     Enum representing the types of investigation cases.

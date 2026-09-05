@@ -22,15 +22,25 @@ class BusinessReadRepository:
     def list_customers(
         self,
         *,
+        is_flagged: bool | None = None,
+        kyc_status: str | None = None,
+        tier: str | None = None,
+        name_contains: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[Customer]:
-        stmt = (
-            select(Customer)
-            .order_by(Customer.full_name.asc())
-            .limit(limit)
-            .offset(offset)
-        )
+        stmt = select(Customer)
+
+        if is_flagged is not None:
+            stmt = stmt.where(Customer.is_flagged.is_(is_flagged))
+        if kyc_status is not None:
+            stmt = stmt.where(Customer.kyc_status == kyc_status)
+        if tier is not None:
+            stmt = stmt.where(Customer.tier == tier)
+        if name_contains is not None:
+            stmt = stmt.where(Customer.full_name.ilike(f"%{name_contains}%"))
+
+        stmt = stmt.order_by(Customer.full_name.asc()).limit(limit).offset(offset)
         return list(self.session.scalars(stmt).all())
 
     def get_customer_by_name(
