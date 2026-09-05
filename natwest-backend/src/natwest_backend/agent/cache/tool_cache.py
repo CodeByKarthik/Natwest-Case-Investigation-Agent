@@ -17,12 +17,12 @@ DEFAULT_TOOL_CACHE_TTL = 300  # 5 minutes — other read-only results
 
 # Tools that are safe to cache (read-only, no side effects)
 CACHEABLE_TOOLS: dict[str, int] = {
-    "get_customer_by_name": CUSTOMER_CACHE_TTL,
-    "list_customers": CUSTOMER_CACHE_TTL,
-    "list_open_issues": DEFAULT_TOOL_CACHE_TTL,
-    "get_issue_by_external_ref": DEFAULT_TOOL_CACHE_TTL,
-    "list_issue_updates": DEFAULT_TOOL_CACHE_TTL,
-    "list_next_actions": DEFAULT_TOOL_CACHE_TTL,
+    "get_customer_profile": CUSTOMER_CACHE_TTL,
+    "get_customer_accounts": CUSTOMER_CACHE_TTL,
+    "list_cases": DEFAULT_TOOL_CACHE_TTL,
+    "get_case_details": DEFAULT_TOOL_CACHE_TTL,
+    "get_case_timeline": DEFAULT_TOOL_CACHE_TTL,
+    "get_next_actions": DEFAULT_TOOL_CACHE_TTL,
 }
 
 

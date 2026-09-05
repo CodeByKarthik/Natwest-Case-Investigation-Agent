@@ -2,7 +2,6 @@ FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
 
 WORKDIR /app
 
-# Keep the workspace root so uv can resolve natwest-shared as a workspace member.
 COPY pyproject.toml uv.lock ./
 COPY natwest-shared ./natwest-shared
 COPY natwest-backend ./natwest-backend

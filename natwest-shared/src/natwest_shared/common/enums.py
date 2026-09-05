@@ -10,30 +10,17 @@ class AppRole(StrEnum):
 
     CUSTOMER_SUPPORT = "customer_support"
     FRAUD_INVESTIGATOR = "fraud_investigator"
-    COMPLIANCE_OFFICER = "compliance_officer"
+    CASE_MANAGER = "case_manager"
 
 
-class CustomerTierEnum(StrEnum):
+class CaseTypeEnum(StrEnum):
     """
-    Enum representing different customer tiers
-    based on their size and revenue.
-    """
-
-    SMB = "smb"
-    MID_MARKET = "mid_market"
-    ENTERPRISE = "enterprise"
-
-
-class CustomerHealthEnum(StrEnum):
-    """
-    Enum representing the health status of a customer
-    based on various factors such as usage, support.
+    Enum representing the types of investigation cases.
     """
 
-    HEALTHY = "healthy"
-    WATCH = "watch"
-    AT_RISK = "at_risk"
-    CRITICAL = "critical"
+    FRAUD = "fraud"
+    DISPUTE = "dispute"
+    COMPLAINT = "complaint"
 
 
 class CaseStatusEnum(StrEnum):
@@ -64,7 +51,7 @@ class CasePriorityEnum(StrEnum):
 class NextActionTypeEnum(StrEnum):
     """
     Enum representing the types of next actions that can
-    be taken for an issue or customer interaction.
+    be taken for a case.
     """
 
     CONTACT_CUSTOMER = "contact_customer"
@@ -74,25 +61,57 @@ class NextActionTypeEnum(StrEnum):
     ESCALATE_VULNERABILITY = "escalate_vulnerability"
     KYC_REFRESH = "kyc_refresh"
     ADD_CASE_NOTE = "add_case_note"
-    CUSTOMER_UPDATE = "customer_update"
-    TECHNICAL_INVESTIGATION = "technical_investigation"
-    WORKAROUND_CONFIRMATION = "workaround_confirmation"
-    ENGINEERING_ESCALATION = "engineering_escalation"
-    ACCOUNT_ESCALATION = "account_escalation"
-    SLA_REVIEW = "sla_review"
-    FOLLOW_UP_MEETING = "follow_up_meeting"
-    OTHER = "other"
 
 
 class NextActionStatusEnum(StrEnum):
     """
     Enum representing the status of a next action item.
+    `overdue` is computed, never stored.
     """
 
     OPEN = "open"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
-    CANCELLED = "cancelled"
+
+
+class SourceSystemEnum(StrEnum):
+    """
+    External source systems that generate alerts and signals.
+    """
+
+    FRAUD_ENGINE = "fraud_engine"
+    TRANSACTION_MONITORING = "transaction_monitoring"
+    KYC_MONITORING = "kyc_monitoring"
+
+
+class VulnerabilityTypeEnum(StrEnum):
+    """
+    Vulnerability signal categories tracked in the vulnerability register.
+    """
+
+    HEALTH = "health"
+    LIFE_EVENT = "life_event"
+    RESILIENCE = "resilience"
+    CAPABILITY = "capability"
+
+
+class VulnerabilityStatusEnum(StrEnum):
+    """
+    Status of a vulnerability register entry.
+    """
+
+    ACTIVE = "active"
+    RESOLVED = "resolved"
+
+
+class StaffTeamEnum(StrEnum):
+    """
+    Team an app user belongs to.
+    """
+
+    CUSTOMER_SUPPORT = "customer_support"
+    FRAUD = "fraud"
+    CASE_MANAGEMENT = "case_management"
 
 
 def enum_values(enum_class: type[enum.Enum]) -> List[str]:

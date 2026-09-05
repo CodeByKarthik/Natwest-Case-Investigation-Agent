@@ -158,17 +158,12 @@ def _check_rbac_compliance(
     - Write tools were called and correctly denied
     """
     write_tools = {
-        "update_issue_status",
-        "add_issue_update",
-        "create_next_action",
-        "update_next_action",
-        "complete_next_action",
+        "update_case_status",
+        "manage_next_action",
     }
 
     admin_tools = {
-        "create_next_action",
-        "update_next_action",
-        "complete_next_action",
+        "manage_next_action",
     }
 
     for msg in messages:

@@ -6,17 +6,17 @@ def test_natwest_roles_are_configured() -> None:
     expected_roles = {
         "customer_support",
         "fraud_investigator",
-        "compliance_officer",
+        "case_manager",
     }
 
     assert {role.value for role in AppRole} == expected_roles
     assert READ_ROLES == {
         AppRole.CUSTOMER_SUPPORT,
         AppRole.FRAUD_INVESTIGATOR,
-        AppRole.COMPLIANCE_OFFICER,
+        AppRole.CASE_MANAGER,
     }
     assert WRITE_ROLES == {
         AppRole.FRAUD_INVESTIGATOR,
-        AppRole.COMPLIANCE_OFFICER,
+        AppRole.CASE_MANAGER,
     }
-    assert ADMIN_ROLES == {AppRole.COMPLIANCE_OFFICER}
+    assert ADMIN_ROLES == {AppRole.CASE_MANAGER}

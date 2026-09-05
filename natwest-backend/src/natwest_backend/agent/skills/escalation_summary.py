@@ -33,6 +33,11 @@ class EscalationSummarySkill:
     Input:  User message containing a customer name.
     Output: Structured executive summary with risk level,
             recommendations, and identified gaps.
+
+    TODO: This skill calls removed legacy MCP tools (get_customer_by_name,
+    list_open_issues, list_issue_updates, list_next_actions) which no longer
+    exist under the new 8-tool contract and 9-table schema. It will be
+    deleted and replaced by an investigation workflow in a separate task.
     """
 
     def __init__(

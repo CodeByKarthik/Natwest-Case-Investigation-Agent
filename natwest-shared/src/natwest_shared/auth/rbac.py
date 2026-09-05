@@ -6,16 +6,16 @@ from ..common.exceptions import PermissionDenied
 READ_ROLES = {
     AppRole.CUSTOMER_SUPPORT,
     AppRole.FRAUD_INVESTIGATOR,
-    AppRole.COMPLIANCE_OFFICER,
+    AppRole.CASE_MANAGER,
 }
 
 WRITE_ROLES = {
     AppRole.FRAUD_INVESTIGATOR,
-    AppRole.COMPLIANCE_OFFICER,
+    AppRole.CASE_MANAGER,
 }
 
 ADMIN_ROLES = {
-    AppRole.COMPLIANCE_OFFICER,
+    AppRole.CASE_MANAGER,
 }
 
 
@@ -46,4 +46,4 @@ def is_admin(context: AuthContext) -> bool:
     """
     Check if the user has admin privileges.
     """
-    return context.role == AppRole.COMPLIANCE_OFFICER
+    return context.role == AppRole.CASE_MANAGER
