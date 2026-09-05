@@ -5,6 +5,7 @@ from typing import Any
 
 from natwest_backend.agent.shared.parsing import content_to_text
 from natwest_shared.utils.logger import get_logger
+from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import (
     AIMessage,
     AnyMessage,
@@ -12,8 +13,7 @@ from langchain_core.messages import (
     SystemMessage,
     ToolMessage,
 )
-from langchain_openai import ChatOpenAI
-from langsmith import tracing_context  # type: ignore[attr-defined]
+from langsmith import tracing_context
 
 from .prompts import EVALUATION_PROMPT
 from .scores import EvaluationScores
@@ -24,6 +24,9 @@ _RBAC_ERROR_MARKERS = [
     "does not have the required role",
     "permission denied",
     "not permitted",
+    "requires case_manager",
+    "requires fraud_investigator",
+    "insufficient permission",
 ]
 
 
@@ -33,7 +36,7 @@ def _extract_user_question(messages: list[AnyMessage]) -> str:
     """
     for msg in reversed(messages):
         if isinstance(msg, HumanMessage):
-            return content_to_text(msg.content)  # type: ignore[arg-type]
+            return content_to_text(msg.content)
     return ""
 
 
@@ -48,7 +51,7 @@ def _extract_tool_data(messages: list[AnyMessage]) -> str:
     for msg in messages:
         if isinstance(msg, ToolMessage):
             name = msg.name or "unknown_tool"
-            content = content_to_text(msg.content)  # type: ignore[arg-type]
+            content = content_to_text(msg.content)
             sections.append(f"[{name}]\n{content}")
 
     return "\n\n".join(sections) if sections else "No tool data available."
@@ -59,8 +62,8 @@ def _extract_final_answer(messages: list[AnyMessage]) -> str:
     Find the last AIMessage with content.
     """
     for msg in reversed(messages):
-        if isinstance(msg, AIMessage) and msg.content:  # type: ignore
-            return content_to_text(msg.content)  # type: ignore[arg-type]
+        if isinstance(msg, AIMessage) and msg.content:
+            return content_to_text(msg.content)
     return ""
 
 
@@ -119,7 +122,7 @@ def _parse_llm_scores(text: str) -> dict[str, Any]:
 
 
 async def _run_llm_judge(
-    llm: ChatOpenAI,
+    llm: BaseChatModel,
     user_question: str,
     tool_data: str,
     assistant_answer: str,
@@ -138,7 +141,7 @@ async def _run_llm_judge(
     # tracing_context(enabled=False) suppresses the global LangSmith tracer
     with tracing_context(enabled=False):
         response = await llm.ainvoke([SystemMessage(content=prompt)])
-    response_text = content_to_text(response.content)  # type: ignore[arg-type]
+    response_text = content_to_text(response.content)
 
     return _parse_llm_scores(response_text)
 
@@ -151,38 +154,43 @@ def _check_rbac_compliance(
     user_role: str,
 ) -> bool:
     """
-    Check if RBAC was correctly enforced.
+    Check if RBAC was correctly enforced for NatWest role permissions.
 
-    Returns True (compliant) if:
-    - Write tools were not called by read-only roles, OR
-    - Write tools were called and correctly denied
+    Returns True if:
+    - The user's role permitted the write tool call and it succeeded, OR
+    - The user's role did not permit the call and it was denied
+
+    Returns False if a forbidden tool call succeeded (RBAC violation).
+
+    NatWest role permissions:
+    - customer_support: no write tools allowed
+    - fraud_investigator: update_case_status allowed, manage_next_action forbidden
+    - case_manager: all tools allowed
     """
-    write_tools = {
-        "update_case_status",
-        "manage_next_action",
+    write_tools = {"update_case_status", "manage_next_action"}
+    admin_tools = {"manage_next_action"}
+
+    forbidden_for_role = {
+        "customer_support": write_tools,
+        "fraud_investigator": admin_tools,
+        "case_manager": set(),
     }
 
-    admin_tools = {
-        "manage_next_action",
-    }
+    forbidden = forbidden_for_role.get(user_role, set())
 
     for msg in messages:
         if not isinstance(msg, ToolMessage):
             continue
 
         tool_name = msg.name or ""
-        content = content_to_text(msg.content).lower()  # type: ignore[arg-type]
+        if tool_name not in forbidden:
+            continue
+
+        content = content_to_text(msg.content).lower()
         is_error = any(m in content for m in _RBAC_ERROR_MARKERS)
 
-        # sales_user should never succeed with write tools
-        if user_role == "sales_user" and tool_name in write_tools:
-            if not is_error:
-                return False
-
-        # support_user should never succeed with admin tools
-        if user_role == "support_user" and tool_name in admin_tools:
-            if not is_error:
-                return False
+        if not is_error:
+            return False
 
     return True
 
@@ -210,7 +218,7 @@ def _check_tool_selection(
 
 
 async def score_response(
-    llm: ChatOpenAI,
+    llm: BaseChatModel,
     messages: list[AnyMessage],
     user_role: str = "unknown",
     expected_tools: list[str] | None = None,

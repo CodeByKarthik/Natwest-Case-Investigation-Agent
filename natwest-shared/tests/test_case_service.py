@@ -82,16 +82,16 @@ class FakeReadRepository:
     def get_customer_profile(self, _customer_id):
         return self.customer
 
-    def get_customer_accounts(self, customer_id):  # type: ignore
-        return []  # type: ignore
+    def get_customer_accounts(self, customer_id):
+        return []
 
-    def get_case_details(self, *, case_id=None, case_ref=None):  # type: ignore
+    def get_case_details(self, *, case_id=None, case_ref=None):
         return self.case
 
-    def get_case_timeline(self, *, case_id):  # type: ignore
+    def get_case_timeline(self, *, case_id):
         return self.timeline
 
-    def get_next_actions(self, *, case_id):  # type: ignore
+    def get_next_actions(self, *, case_id):
         return self.actions
 
     def update_case_status(
@@ -100,7 +100,7 @@ class FakeReadRepository:
         case_id,
         new_status,
         reason,
-        updated_by_user_id=None,  # type: ignore
+        updated_by_user_id=None,
     ):
         self.case.status = new_status
         return self.case
@@ -111,7 +111,7 @@ class FakeReadRepository:
         operation,
         case_id=None,
         action_id=None,
-        fields=None,  # type: ignore
+        fields=None,
     ):
         if operation == "create":
             return self.actions[0]
@@ -157,12 +157,12 @@ class FakeWriteRepository:
     def update_case_status(
         self,
         *,
-        case_id,  # type: ignore
-        new_status,  # type: ignore
-        reason,  # type: ignore
-        updated_by_user_id=None,  # type: ignore
-        updated_by_name=None,  # type: ignore
-        updated_by_role=None,  # type: ignore
+        case_id,
+        new_status,
+        reason,
+        updated_by_user_id=None,
+        updated_by_name=None,
+        updated_by_role=None,
     ):
         self.case.status = new_status
         return self.case
@@ -173,14 +173,14 @@ class FakeWriteRepository:
         operation,
         case_id=None,
         action_id=None,
-        fields=None,  # type: ignore
-        created_by_user_id=None,  # type: ignore
+        fields=None,
+        created_by_user_id=None,
     ):
         if operation == "create":
             self.action.id = uuid4()
             return self.action
         if operation == "update":
-            self.action.description = fields.get("description", self.action.description)  # type: ignore
+            self.action.description = fields.get("description", self.action.description)
             return self.action
         if operation == "complete":
             self.action.status = "completed"

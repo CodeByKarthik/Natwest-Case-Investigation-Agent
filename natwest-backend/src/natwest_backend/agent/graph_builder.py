@@ -6,7 +6,7 @@ from natwest_shared.utils.logger import get_logger
 from langchain_core.tools import BaseTool
 from langgraph.graph import (
     END,
-    START,  # type: ignore[import-untyped]
+    START,
     StateGraph,
 )
 from langgraph.prebuilt import ToolNode

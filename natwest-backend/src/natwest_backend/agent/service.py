@@ -30,10 +30,10 @@ class AgentResult:
     """
 
     answer: str
-    messages: list[AnyMessage] = field(default_factory=list)  # type: ignore[misc]
+    messages: list[AnyMessage] = field(default_factory=list)
     run_id: str = ""
     route: str = ""
-    tools_called: list[str] = field(default_factory=list)  # type: ignore[misc]
+    tools_called: list[str] = field(default_factory=list)
     skill_context: str = ""
 
 
@@ -42,7 +42,7 @@ def _detect_rbac_denial(messages: list[Any]) -> bool:
     Scan tool responses for RBAC denial indicators.
     """
     for msg in messages:
-        if isinstance(msg, ToolMessage) and isinstance(msg.content, str):  # type: ignore
+        if isinstance(msg, ToolMessage) and isinstance(msg.content, str):
             content_lower = msg.content.lower()
             if any(marker in content_lower for marker in _RBAC_ERROR_MARKERS):
                 return True
@@ -208,8 +208,8 @@ class AgentService:
             # --- Extract final answer ---
             answer = "I was unable to process your request. Please try again."
             for msg in reversed(messages):
-                if isinstance(msg, AIMessage) and msg.content:  # type: ignore
-                    answer = str(msg.content)  # type: ignore
+                if isinstance(msg, AIMessage) and msg.content:
+                    answer = str(msg.content)
                     break
 
             return AgentResult(

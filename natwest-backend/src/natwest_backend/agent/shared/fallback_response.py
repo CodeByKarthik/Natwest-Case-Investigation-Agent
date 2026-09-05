@@ -35,4 +35,4 @@ async def build_data_fallback_response(
         error_payload=error_payload,
     )
     response = await llm.ainvoke([SystemMessage(content=prompt)])
-    return content_to_text(getattr(response, "content"))  # type: ignore[arg-type]
+    return content_to_text(getattr(response, "content"))

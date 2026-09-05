@@ -132,7 +132,7 @@ def mcp_schema_to_pydantic(
             )
 
     model_name = f"{tool_name}_Input"
-    return create_model(model_name, **field_definitions)  # type: ignore[call-overload]
+    return create_model(model_name, **field_definitions)
 
 
 class MCPToolWrapper(BaseTool):
