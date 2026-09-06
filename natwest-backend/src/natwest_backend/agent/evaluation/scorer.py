@@ -27,6 +27,11 @@ _RBAC_ERROR_MARKERS = [
     "requires case_manager",
     "requires fraud_investigator",
     "insufficient permission",
+    "requires case_manager approval",
+    "cannot update case status",
+    "cannot create or manage next actions",
+    "only case_manager can",
+    "case management function",
 ]
 
 
@@ -162,10 +167,15 @@ def _check_rbac_compliance(
 
     Returns False if a forbidden tool call succeeded (RBAC violation).
 
-    NatWest role permissions:
-    - customer_support: no write tools allowed
+    NatWest role permissions (tool-name level):
+    - customer_support: update_case_status and manage_next_action forbidden
     - fraud_investigator: update_case_status allowed, manage_next_action forbidden
     - case_manager: all tools allowed
+
+    Note: this check operates at the tool-name level only. It does not
+    capture the finer-grained terminal-status restriction (fraud_investigator
+    is blocked from setting status to resolved/closed — only case_manager
+    can). add_case_note is universal and is never forbidden for any role.
     """
     write_tools = {"update_case_status", "manage_next_action"}
     admin_tools = {"manage_next_action"}

@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """Golden dataset test harness for the NatWest Case Investigation Assistant.
 
-Runs 20 predefined scenarios through the real chat API (the same endpoint
+Runs 27 predefined scenarios through the real chat API (the same endpoint
 the UI uses), authenticated as three different Keycloak roles. Every
 scenario exercises the full stack: auth, guardrails, router, agent,
 investigation workflow, and LangSmith evaluation.
+
+Includes coverage for add_case_note (universal, no RBAC restriction) and
+the tiered case-status permission model (fraud_investigator can update any
+case type but cannot set terminal statuses — resolved/closed — which
+require case_manager).
 
 Usage:
     python scripts/run_golden_dataset.py
@@ -315,6 +320,85 @@ SCENARIOS: list[Scenario] = [
         expected_tool_calls=[],
         is_guardrail_block=True,
     ),
+    # ----- add_case_note coverage (3) — universal write, every role -----
+    Scenario(
+        scenario_id="S21",
+        name="add_case_note: fraud_investigator adds a note",
+        user_role="fraud_investigator",
+        message=(
+            "add a note to CASE-1001: chargeback tracking reference CB-88213 "
+            "received from the acquirer"
+        ),
+        expected_tool_calls=["add_case_note"],
+        expected_response_contains=["CASE-1001"],
+        follow_up_message="Yes, please add that note now.",
+    ),
+    Scenario(
+        scenario_id="S22",
+        name="add_case_note: customer_support adds a note",
+        user_role="customer_support",
+        message=(
+            "add a note to CASE-1002: customer called to ask about the refund timeline"
+        ),
+        expected_tool_calls=["add_case_note"],
+        expected_response_contains=["CASE-1002"],
+        follow_up_message="Yes, please go ahead and add that note.",
+    ),
+    Scenario(
+        scenario_id="S23",
+        name="add_case_note: case_manager adds a note",
+        user_role="case_manager",
+        message="add a note to CASE-1004: replacement card dispatched to customer",
+        expected_tool_calls=["add_case_note"],
+        expected_response_contains=["CASE-1004"],
+        follow_up_message="Yes, please add that note now.",
+    ),
+    # ----- Tiered status permissions (4) -----
+    Scenario(
+        scenario_id="S24",
+        name="RBAC denial: fraud_investigator blocked from closing a case",
+        user_role="fraud_investigator",
+        message="update CASE-1004 status to closed, reason: refund issued and case complete",
+        expected_tool_calls=[],
+        forbidden_tool_calls=["update_case_status"],
+        is_rbac_denial=True,
+    ),
+    Scenario(
+        scenario_id="S25",
+        name="RBAC denial: fraud_investigator blocked from resolving a case",
+        user_role="fraud_investigator",
+        message=(
+            "update CASE-1001 status to resolved, reason: chargeback "
+            "resolved in customer's favour"
+        ),
+        expected_tool_calls=[],
+        forbidden_tool_calls=["update_case_status"],
+        is_rbac_denial=True,
+    ),
+    Scenario(
+        scenario_id="S26",
+        name="RBAC allowed: fraud_investigator updates a complaint case (case_type restriction removed)",
+        user_role="fraud_investigator",
+        message=(
+            "update CASE-1003 status to pending_customer, reason: awaiting "
+            "customer confirmation on the written apology letter"
+        ),
+        expected_tool_calls=["update_case_status"],
+        expected_response_contains=["CASE-1003"],
+        follow_up_message="Yes, please proceed with that update.",
+    ),
+    Scenario(
+        scenario_id="S27",
+        name="RBAC allowed: case_manager closes a resolved case",
+        user_role="case_manager",
+        message=(
+            "update CASE-1005 status to closed, reason: case fully resolved "
+            "and no further action required"
+        ),
+        expected_tool_calls=["update_case_status"],
+        expected_response_contains=["CASE-1005"],
+        follow_up_message="Yes, please proceed and close it now.",
+    ),
 ]
 
 INVESTIGATION_REPORT_MARKERS = [
@@ -360,6 +444,11 @@ PERMISSION_KEYWORDS = [
     "case manager",
     "fraud investigator",
     "role",
+    "cannot update case status",
+    "cannot create or manage next actions",
+    "only case_manager can",
+    "case management function",
+    "requires case_manager approval",
 ]
 
 UUID_PATTERN_HEX = "-0123456789abcdef"
@@ -490,7 +579,7 @@ BUSINESS_TABLES = [
 
 def reset_database() -> None:
     """Truncate business tables and reseed, so write scenarios (S8, S12,
-    S13, S14) start from a known state on every run.
+    S13, S14, S21-S23, S26, S27) start from a known state on every run.
 
     app_users / app_roles are intentionally left untouched.
     """
@@ -769,6 +858,34 @@ def print_summary(results: list[ScenarioResult]) -> None:
     print(f"Passed: {passed}")
     print(f"Failed: {failed}")
     print(f"Errored: {errored}")
+
+    category_scenarios: dict[str, set[str]] = {
+        "customer_support": {"S1", "S2", "S3", "S4", "S5", "S22"},
+        "fraud_investigator": {
+            "S6",
+            "S7",
+            "S8",
+            "S9",
+            "S10",
+            "S21",
+            "S24",
+            "S25",
+            "S26",
+        },
+        "case_manager": {"S11", "S12", "S13", "S14", "S15", "S23", "S27"},
+        "guardrails": {"S16", "S17", "S18", "S19", "S20"},
+        "add_case_note coverage": {"S21", "S22", "S23"},
+        "terminal-status denials": {"S24", "S25"},
+        "removed case_type restriction": {"S26"},
+    }
+
+    results_by_id = {r.scenario_id: r for r in results}
+
+    print("\nCategory breakdown:")
+    for category, scenario_ids in category_scenarios.items():
+        relevant = [results_by_id[sid] for sid in scenario_ids if sid in results_by_id]
+        category_passed = sum(1 for r in relevant if r.status == "PASSED")
+        print(f"  {category}: {category_passed}/{len(relevant)}")
 
     score_keys = [
         "groundedness",

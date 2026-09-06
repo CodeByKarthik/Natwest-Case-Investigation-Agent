@@ -159,3 +159,25 @@ class BusinessWriteRepository:
             return existing_action
 
         return None
+
+    def add_case_note(
+        self,
+        *,
+        case_id: UUID,
+        note_text: str,
+        created_by_user_id: UUID | None,
+    ) -> CaseEvent:
+        """Insert a note event on the case. Notes are append-only audit
+        records — no existing data is modified."""
+        event = CaseEvent(
+            case_id=case_id,
+            event_type="note",
+            event_description=note_text,
+            created_by_user_id=created_by_user_id,
+            created_by_system=None,
+            source_record_id=None,
+        )
+        self.session.add(event)
+        self.session.flush()
+        self.session.refresh(event)
+        return event

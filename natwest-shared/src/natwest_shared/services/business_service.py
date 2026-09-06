@@ -1,6 +1,12 @@
 from uuid import UUID
 
-from natwest_shared.auth.rbac import ADMIN_ROLES, READ_ROLES, WRITE_ROLES, require_role
+from natwest_shared.auth.rbac import (
+    ADMIN_ROLES,
+    READ_ROLES,
+    TERMINAL_CASE_STATUSES,
+    WRITE_ROLES,
+    require_role,
+)
 from natwest_shared.common.enums import (
     AppRole,
     CaseStatusEnum,
@@ -138,9 +144,15 @@ class BusinessService:
     def update_case_status(
         self, *, case_id: UUID, new_status: str | CaseStatusEnum, reason: str
     ) -> Case | None:
-        """Update a case status. Allowed for case_manager on all cases and
-        fraud_investigator on fraud/dispute cases only."""
-        require_role(self.auth_context, WRITE_ROLES)
+        """Update a case status. fraud_investigator can set any status
+        except the terminal ones (resolved, closed), which require
+        case_manager. customer_support cannot update case status at all."""
+        if self.auth_context.role not in WRITE_ROLES:
+            raise PermissionDenied(
+                "Customer support cannot update case status. Case status "
+                "changes require fraud_investigator (for active investigation "
+                "states) or case_manager (for closure or resolution)."
+            )
 
         new_status_value = (
             new_status.value if isinstance(new_status, CaseStatusEnum) else new_status
@@ -154,10 +166,13 @@ class BusinessService:
 
         if (
             self.auth_context.role == AppRole.FRAUD_INVESTIGATOR
-            and case.case_type not in {"fraud", "dispute"}
+            and new_status_value in TERMINAL_CASE_STATUSES
         ):
             raise PermissionDenied(
-                "Fraud investigators may only update fraud and dispute cases"
+                f"Only case_manager can set status to '{new_status_value}'. "
+                "Fraud investigators can update status to open, "
+                "under_investigation, pending_customer, or escalated. Final "
+                "resolution or closure requires case_manager approval."
             )
 
         return self.write_repository.update_case_status(
@@ -176,7 +191,19 @@ class BusinessService:
         fields: dict[str, object] | None = None,
     ) -> NextAction | None:
         """Create, update, or complete a next action. Case managers only."""
-        require_role(self.auth_context, ADMIN_ROLES)
+        if self.auth_context.role not in ADMIN_ROLES:
+            if self.auth_context.role == AppRole.FRAUD_INVESTIGATOR:
+                raise PermissionDenied(
+                    "Fraud investigators cannot create or manage next actions. "
+                    "Assigning follow-up work is a case management function — "
+                    "only case_manager can create, update, or complete next "
+                    "actions."
+                )
+            raise PermissionDenied(
+                "Customer support cannot create or manage next actions. Next "
+                "actions require case_manager permissions. You can still add "
+                "notes to the case for audit purposes using add_case_note."
+            )
 
         if operation not in _VALID_OPERATIONS:
             raise ValueError(
@@ -216,5 +243,18 @@ class BusinessService:
             case_id=case_id,
             action_id=action_id,
             fields=fields,
+            created_by_user_id=UUID(self.auth_context.app_user_id),
+        )
+
+    def add_case_note(self, *, case_id: UUID, note_text: str) -> CaseEvent | None:
+        """Append a free-text note to a case's timeline. Available to every
+        role — notes are audit-trail additions, not case management
+        decisions, so there is no RBAC restriction here."""
+        if self.read_repository.get_case_details(case_id=case_id) is None:
+            return None
+
+        return self.write_repository.add_case_note(
+            case_id=case_id,
+            note_text=note_text,
             created_by_user_id=UUID(self.auth_context.app_user_id),
         )

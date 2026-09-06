@@ -18,6 +18,8 @@ ADMIN_ROLES = {
     AppRole.CASE_MANAGER,
 }
 
+TERMINAL_CASE_STATUSES = {"resolved", "closed"}
+
 
 def require_role(context: AuthContext, allowed_roles: set[AppRole]) -> None:
     """

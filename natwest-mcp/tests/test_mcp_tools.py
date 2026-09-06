@@ -4,6 +4,7 @@ from decimal import Decimal
 from uuid import uuid4
 
 from natwest_mcp.mcp.tools.business_tools import (
+    add_case_note,
     get_case_details,
     get_customer_profile,
     list_cases,
@@ -123,6 +124,18 @@ class FakeMCPService:
     ):
         return self.next_action
 
+    def add_case_note(self, *, case_id, note_text):
+        return CaseEvent(
+            id=uuid4(),
+            case_id=case_id,
+            event_type="note",
+            event_description=note_text,
+            created_by_user_id=uuid4(),
+            created_by_system=None,
+            source_record_id=None,
+            created_at=datetime(2025, 1, 18, tzinfo=UTC),
+        )
+
 
 def test_registry_exposes_expected_natwest_tool_names() -> None:
     tool_names = {func.__name__ for func, _ in TOOLS}
@@ -137,6 +150,7 @@ def test_registry_exposes_expected_natwest_tool_names() -> None:
         "update_case_status",
         "get_next_actions",
         "manage_next_action",
+        "add_case_note",
     }
 
     assert tool_names == expected
@@ -189,3 +203,18 @@ def test_case_update_and_next_action_tools_are_accepted() -> None:
     )
     assert action is not None
     assert action.description == "Collect recent statements"
+
+
+def test_add_case_note_tool_is_accepted() -> None:
+    service = FakeMCPService()
+
+    event = asyncio.run(
+        add_case_note(
+            case_id=service.case.id,
+            note_text="  Called customer to confirm details.  ",
+            service=service,
+        )
+    )
+
+    assert event is not None
+    assert event.event_type == "note"
