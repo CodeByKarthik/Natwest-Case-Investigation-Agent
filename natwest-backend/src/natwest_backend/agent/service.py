@@ -35,6 +35,7 @@ class AgentResult:
     route: str = ""
     tools_called: list[str] = field(default_factory=list)
     skill_context: str = ""
+    rbac_denied: bool = False
 
 
 def _detect_rbac_denial(messages: list[Any]) -> bool:
@@ -89,13 +90,36 @@ class AgentService:
         auth_context: AuthContext | None,
         conversation_id: str | None,
         run_id: str,
+        extra_metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Build the RunnableConfig passed to graph.ainvoke().
+
+        extra_metadata is merged into the LangSmith metadata and, for a
+        "golden_dataset"/"scenario_id" pair, added as tags so test runs can
+        be filtered in the LangSmith UI.
         """
         username = auth_context.username if auth_context else "unknown"
         role = auth_context.role.value if auth_context else "unknown"
         user_id = auth_context.app_user_id if auth_context else ""
+
+        metadata = {
+            "username": username,
+            "user_id": user_id,
+            "role": role,
+            "conversation_id": conversation_id or "",
+            "route": "/api/chat",
+            "app_version": settings.app_version,
+        }
+        tags = ["api_chat", f"role:{role}"]
+
+        if extra_metadata:
+            metadata.update(extra_metadata)
+            if extra_metadata.get("golden_dataset"):
+                tags.append("golden_dataset_run")
+            scenario_id = extra_metadata.get("scenario_id")
+            if scenario_id:
+                tags.append(f"scenario:{scenario_id}")
 
         return {
             "run_id": run_id,
@@ -106,18 +130,8 @@ class AgentService:
                 "user_id": user_id,
                 "conversation_id": conversation_id or "",
             },
-            "metadata": {
-                "username": username,
-                "user_id": user_id,
-                "role": role,
-                "conversation_id": conversation_id or "",
-                "route": "/api/chat",
-                "app_version": settings.app_version,
-            },
-            "tags": [
-                "api_chat",
-                f"role:{role}",
-            ],
+            "metadata": metadata,
+            "tags": tags,
         }
 
     async def run(
@@ -126,6 +140,7 @@ class AgentService:
         token: str,
         auth_context: AuthContext | None = None,
         conversation_id: str | None = None,
+        extra_metadata: dict[str, Any] | None = None,
     ) -> AgentResult:
         """
         Execute the agent graph for a single user query.
@@ -150,7 +165,9 @@ class AgentService:
 
         await self._ensure_cache()
         assert self._conversation_memory is not None  # nosec: B101
-        config = self._build_config(auth_context, conversation_id, run_id)
+        config = self._build_config(
+            auth_context, conversation_id, run_id, extra_metadata
+        )
 
         # --- Load conversation history from Redis ---
         previous_messages = []
@@ -190,7 +207,8 @@ class AgentService:
             for name in tool_names:
                 config["tags"].append(f"tool:{name}")
 
-            if _detect_rbac_denial(messages):
+            rbac_denied = _detect_rbac_denial(messages)
+            if rbac_denied:
                 config["tags"].append("rbac_denied")
                 logger.info("RBAC denial detected in tool responses")
 
@@ -219,4 +237,5 @@ class AgentService:
                 route=route,
                 tools_called=tool_names,
                 skill_context=result.get("skill_context", ""),
+                rbac_denied=rbac_denied,
             )

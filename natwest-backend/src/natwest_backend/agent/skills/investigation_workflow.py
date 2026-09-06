@@ -360,36 +360,50 @@ class CaseInvestigationWorkflow:
     async def _call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
         """Call an MCP tool, logging failures with full context for debugging.
 
+        Retries once on a transient empty MCP response ("No output
+        returned") before giving up — this has been observed occasionally
+        under rapid back-to-back requests and is not a data error.
+
         Returns parsed JSON (dict/list) or None on failure.
         """
-        try:
-            raw = await self._connection.call_tool(name, arguments)
-        except Exception:  # noqa: BLE001 — continue with partial data
-            logger.exception(
-                "Investigation tool call %s raised | args=%s", name, arguments
-            )
-            return None
+        for attempt in range(2):
+            try:
+                raw = await self._connection.call_tool(name, arguments)
+            except Exception:  # noqa: BLE001 — continue with partial data
+                logger.exception(
+                    "Investigation tool call %s raised | args=%s", name, arguments
+                )
+                return None
 
-        if isinstance(raw, str) and raw.startswith("Error:"):
-            logger.warning(
-                "Investigation tool call %s failed | args=%s | response=%.300s",
-                name,
-                arguments,
-                raw,
-            )
-            return None
+            if raw == "No output returned" and attempt == 0:
+                logger.warning(
+                    "Investigation tool call %s returned no output, retrying | args=%s",
+                    name,
+                    arguments,
+                )
+                continue
 
-        try:
-            # json.loads handles "null" (not found) distinctly from garbage.
-            return json.loads(raw)
-        except (json.JSONDecodeError, TypeError):
-            logger.warning(
-                "Investigation tool call %s returned unparseable data | args=%s | response=%.300s",
-                name,
-                arguments,
-                raw,
-            )
-            return None
+            if isinstance(raw, str) and raw.startswith("Error:"):
+                logger.warning(
+                    "Investigation tool call %s failed | args=%s | response=%.300s",
+                    name,
+                    arguments,
+                    raw,
+                )
+                return None
+
+            try:
+                # json.loads handles "null" (not found) distinctly from garbage.
+                return json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                logger.warning(
+                    "Investigation tool call %s returned unparseable data | args=%s | response=%.300s",
+                    name,
+                    arguments,
+                    raw,
+                )
+                return None
+        return None
 
     # ------------------------------------------------------------------
     # LLM steps

@@ -34,6 +34,7 @@ async def chat(
         token=token,
         auth_context=auth_context,
         conversation_id=str(conversation_id),
+        extra_metadata=request.metadata,
     )
 
     background_tasks.add_task(
@@ -51,4 +52,7 @@ async def chat(
         authenticated_username=auth_context.username,
         authenticated_role=auth_context.role.value,
         created_at=datetime.now(UTC),
+        run_id=result.run_id,
+        tools_called=result.tools_called,
+        rbac_denied=result.rbac_denied,
     )
