@@ -16,6 +16,7 @@ import pytest
 from natwest_backend.agent.skills.investigation_workflow import (
     CaseInvestigationWorkflow,
     InvestigationInput,
+    _serialise_for_prompt,
 )
 
 CUSTOMER_ID = str(uuid4())
@@ -139,8 +140,12 @@ class FakeMCPConnection:
 class FakeLLM:
     """Mimics ChatOpenAI.ainvoke with deterministic placeholder answers."""
 
+    def __init__(self) -> None:
+        self.prompts: list[str] = []
+
     async def ainvoke(self, messages: list[Any], config: Any = None) -> Any:
         prompt = messages[0].content
+        self.prompts.append(prompt)
         if "identify risk indicators" in prompt:
             return SimpleNamespace(
                 content=json.dumps(
@@ -189,9 +194,56 @@ def test_investigation_input_requires_exactly_one_identifier() -> None:
         InvestigationInput(case_ref="CASE-1001", customer_name="Jane Doe")
 
 
+def test_serialise_for_prompt_strips_uuid_fields_but_keeps_human_refs() -> None:
+    raw = {
+        "id": "d438c96f-23fe-4583-a292-2eff0854a983",
+        "customer_id": "0d4eff6d-c530-4c9b-bbee-2abd5101c53e",
+        "case_ref": "CASE-1001",
+        "assigned_user_id": "1938aeda-b7b4-47bc-aceb-66e7e042d854",
+        "nested": [
+            {
+                "source_record_id": "11111111-1111-1111-1111-111111111111",
+                "source_ref": "FE-2026-8891",
+                "account_number": "12345678",
+            }
+        ],
+    }
+
+    cleaned = _serialise_for_prompt(raw)
+
+    assert "id" not in cleaned
+    assert "customer_id" not in cleaned
+    assert "assigned_user_id" not in cleaned
+    assert cleaned["case_ref"] == "CASE-1001"
+    assert "source_record_id" not in cleaned["nested"][0]
+    assert cleaned["nested"][0]["source_ref"] == "FE-2026-8891"
+    assert cleaned["nested"][0]["account_number"] == "12345678"
+
+
+def test_serialise_for_prompt_humanizes_dates_but_keeps_non_dates() -> None:
+    raw = {
+        "opened_date": "2026-09-01T01:54:28.526588Z",
+        "created_at": "2026-09-05T00:00:00+00:00",
+        "customer_since": "2018-02-01",
+        "case_ref": "CASE-1001",
+        "source_ref": "FE-2026-8891",
+        "disputed_amount": "3475.80",
+    }
+
+    cleaned = _serialise_for_prompt(raw)
+
+    assert cleaned["opened_date"] == "01 Sep 2026, 01:54"
+    assert cleaned["created_at"] == "05 Sep 2026"
+    assert cleaned["customer_since"] == "01 Feb 2018"
+    assert cleaned["case_ref"] == "CASE-1001"
+    assert cleaned["source_ref"] == "FE-2026-8891"
+    assert cleaned["disputed_amount"] == "3475.80"
+
+
 def test_happy_path_with_case_ref() -> None:
     connection = FakeMCPConnection(cases_by_ref={"CASE-1001": CASE}, all_cases=[CASE])
-    workflow = CaseInvestigationWorkflow(connection=connection, llm=FakeLLM())  # type: ignore[arg-type]
+    llm = FakeLLM()
+    workflow = CaseInvestigationWorkflow(connection=connection, llm=llm)  # type: ignore[arg-type]
 
     report = run(workflow.execute(InvestigationInput(case_ref="CASE-1001")))
 
@@ -205,14 +257,20 @@ def test_happy_path_with_case_ref() -> None:
     assert report.recommended_action_type == "contact_customer"
     assert report.reasoning
     assert report.disambiguation_note is None
-    assert report.data_sources == [
+    called = {name for name, _ in connection.calls}
+    assert called == {
         "get_case_details",
         "get_customer_profile",
         "get_customer_accounts",
         "list_cases",
         "get_case_timeline",
         "get_next_actions",
-    ]
+    }
+
+    for prompt in llm.prompts:
+        assert CASE_ID not in prompt
+        assert CUSTOMER_ID not in prompt
+        assert "CASE-1001" in prompt
 
 
 def test_happy_path_with_customer_name_single_case() -> None:
@@ -225,8 +283,24 @@ def test_happy_path_with_customer_name_single_case() -> None:
     assert report.disambiguation_note == (
         "Resolved from customer name Jane Doe to case CASE-1001."
     )
-    assert report.data_sources[0] == "list_customers"
-    assert "get_case_details" in report.data_sources
+    called = [name for name, _ in connection.calls]
+    assert called[0] == "list_customers"
+    assert "get_case_details" in called
+
+
+def test_customer_name_resolves_pending_customer_case_as_active() -> None:
+    """Regression: a case in pending_customer status is still active work and
+    must resolve, not be treated as inactive like resolved/closed."""
+    pending_case = {**CASE, "case_ref": "CASE-1006", "status": "pending_customer"}
+    connection = FakeMCPConnection(
+        cases_by_ref={"CASE-1006": pending_case}, all_cases=[pending_case]
+    )
+    workflow = CaseInvestigationWorkflow(connection=connection, llm=FakeLLM())  # type: ignore[arg-type]
+
+    report = run(workflow.execute(InvestigationInput(customer_name="Jane Doe")))
+
+    assert report.case_ref == "CASE-1006"
+    assert report.case_summary != "No active cases for this customer"
 
 
 def test_customer_name_with_multiple_cases_picks_highest_priority() -> None:
@@ -254,7 +328,7 @@ def test_case_not_found_returns_error_report() -> None:
     assert report.case_summary == "Case not found"
     assert report.risk_indicators == []
     assert report.recommended_action == ""
-    assert report.data_sources == ["get_case_details"]
+    assert [name for name, _ in connection.calls] == ["get_case_details"]
 
 
 def test_unknown_customer_name_returns_error_report() -> None:
@@ -264,10 +338,10 @@ def test_unknown_customer_name_returns_error_report() -> None:
     report = run(workflow.execute(InvestigationInput(customer_name="Nobody Smith")))
 
     assert report.case_summary == "No customer found matching name"
-    assert report.data_sources == ["list_customers"]
+    assert [name for name, _ in connection.calls] == ["list_customers"]
 
 
-def test_failed_tool_call_is_marked_in_data_sources() -> None:
+def test_failed_tool_call_continues_with_partial_data() -> None:
     connection = FakeMCPConnection(cases_by_ref={"CASE-1001": CASE}, all_cases=[CASE])
 
     async def failing_call_tool(name: str, arguments: dict[str, Any]) -> str:
@@ -280,6 +354,7 @@ def test_failed_tool_call_is_marked_in_data_sources() -> None:
 
     report = run(workflow.execute(InvestigationInput(case_ref="CASE-1001")))
 
-    assert "get_case_timeline (failed)" in report.data_sources
     assert report.case_ref == "CASE-1001"
-    assert report.case_summary  # workflow continued with partial data
+    assert (
+        report.case_summary
+    )  # workflow continued with partial data despite the failed call

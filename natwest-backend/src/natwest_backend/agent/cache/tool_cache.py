@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import hashlib
-import json
 from typing import Any
 
 import redis.asyncio as aioredis
@@ -11,49 +9,52 @@ logger = get_logger(__name__)
 
 _KEY_PREFIX = "tool_cache:"
 
-# Default TTLs in seconds
-CUSTOMER_CACHE_TTL = 300  # 5 minutes — customer profiles change rarely
-DEFAULT_TOOL_CACHE_TTL = 300  # 5 minutes — other read-only results
+# 5 minutes — these tools return data that is immutable within a workflow
+# run (customer identity, profile, vulnerability register, accounts).
+CUSTOMER_CACHE_TTL = 300
 
-# Tools that are safe to cache (read-only, no side effects)
+# Tools safe to cache: read-only, no RBAC scope-filtering (identical
+# response regardless of caller role), and not mutated by any write tool
+# in this workflow. Case/action tools are deliberately excluded — cases
+# change via update_case_status, timelines grow, and next actions change
+# status, so those reads must always be fresh.
 CACHEABLE_TOOLS: dict[str, int] = {
     "list_customers": CUSTOMER_CACHE_TTL,
     "get_customer_profile": CUSTOMER_CACHE_TTL,
     "get_customer_accounts": CUSTOMER_CACHE_TTL,
-    "list_cases": DEFAULT_TOOL_CACHE_TTL,
-    "get_case_details": DEFAULT_TOOL_CACHE_TTL,
-    "get_case_timeline": DEFAULT_TOOL_CACHE_TTL,
-    "get_next_actions": DEFAULT_TOOL_CACHE_TTL,
 }
 
 
 def _make_cache_key(tool_name: str, arguments: dict[str, Any]) -> str:
     """
-    Build a deterministic cache key from tool name and arguments.
+    Build a deterministic, human-readable cache key from the tool name and
+    its full parameter set, sorted so argument order never affects the key.
 
-    Arguments are sorted and hashed to keep keys short and
-    avoid issues with argument ordering.
+    Role is intentionally omitted: none of the cacheable tools filter
+    their results by caller role, so the response is identical for every
+    role and including it would only fragment the cache.
     """
-    args_str = json.dumps(arguments, sort_keys=True, default=str)
-    args_hash = hashlib.sha256(args_str.encode()).hexdigest()[:16]
-    return f"{_KEY_PREFIX}{tool_name}:{args_hash}"
+    params = ":".join(f"{key}={arguments[key]}" for key in sorted(arguments))
+    return (
+        f"{_KEY_PREFIX}{tool_name}:{params}" if params else f"{_KEY_PREFIX}{tool_name}"
+    )
 
 
 class ToolResultCache:
     """
-    Redis-backed cache for read-only MCP tool results.
+    Redis-backed cache for immutable, read-only MCP tool results.
 
     Usage:
         cache = ToolResultCache(redis_client)
 
         # Check cache before calling MCP
-        cached = await cache.get("get_customer_by_name", {"name": "Globex"})
+        cached = await cache.get("get_customer_profile", {"customer_id": customer_id})
         if cached is not None:
             return cached
 
         # Call MCP and cache the result
         result = await mcp_connection.call_tool(...)
-        await cache.set("get_customer_by_name", {"name": "Globex"}, result)
+        await cache.set("get_customer_profile", {"customer_id": customer_id}, result)
     """
 
     def __init__(self, redis: aioredis.Redis) -> None:
@@ -120,11 +121,3 @@ class ToolResultCache:
             )
         except Exception:
             logger.exception("Cache SET failed | tool: %s", tool_name)
-
-    async def invalidate(self, tool_name: str, arguments: dict[str, Any]) -> None:
-        """Explicitly remove a cached result."""
-        key = _make_cache_key(tool_name, arguments)
-        try:
-            await self._redis.delete(key)
-        except Exception:
-            logger.exception("Cache invalidate failed | tool: %s", tool_name)

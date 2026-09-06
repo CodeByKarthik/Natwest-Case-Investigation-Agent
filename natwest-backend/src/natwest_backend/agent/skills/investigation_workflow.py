@@ -12,6 +12,7 @@ The workflow never calls write tools — it is a read-only investigation.
 from __future__ import annotations
 
 import json
+import re
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -24,23 +25,76 @@ from natwest_backend.agent.prompts.skills.investigation import (
 )
 from natwest_backend.agent.shared.parsing import content_to_text
 from natwest_shared.utils.logger import get_logger
+from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import SystemMessage
-from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field, model_validator
 
 logger = get_logger(__name__)
 
-# Tools the workflow is allowed to call (read-only).
-BASE_DATA_SOURCES = [
-    "get_case_details",
-    "get_customer_profile",
-    "get_customer_accounts",
-    "list_cases",
-    "get_case_timeline",
-    "get_next_actions",
-]
-
 PRIORITY_ORDER = {"p1": 0, "p2": 1, "p3": 2, "p4": 3}
+
+# Cases in these statuses are still ongoing work — everything except the
+# two terminal statuses counts as "active" for customer-name resolution.
+ACTIVE_CASE_STATUSES = {"open", "under_investigation", "pending_customer", "escalated"}
+
+# Identifier fields stripped before data reaches the LLM prompts — internal
+# UUIDs are not useful citations and the LLM sometimes cites them instead of
+# the human-readable ref (case_ref, source_ref, account_number all stay).
+_UUID_FIELDS = {
+    "id",
+    "customer_id",
+    "case_id",
+    "action_id",
+    "event_id",
+    "source_record_id",
+    "assigned_user_id",
+    "created_by_user_id",
+    "role_id",
+}
+
+_DATE_ONLY_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_DATETIME_PATTERN = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$"
+)
+
+
+def _humanize_date_string(value: str) -> str:
+    """Reformat an ISO date/datetime string as 'DD Mon YYYY[, HH:MM]',
+    leaving anything that isn't a recognisable date untouched (case_ref,
+    source_ref, account_number, etc.)."""
+    if _DATE_ONLY_PATTERN.match(value):
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").strftime("%d %b %Y")
+        except ValueError:
+            return value
+
+    if _DATETIME_PATTERN.match(value):
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return value
+        if parsed.hour == 0 and parsed.minute == 0 and parsed.second == 0:
+            return parsed.strftime("%d %b %Y")
+        return parsed.strftime("%d %b %Y, %H:%M")
+
+    return value
+
+
+def _serialise_for_prompt(data: Any) -> Any:
+    """Recursively strip internal UUID fields and humanize ISO date/
+    datetime strings so the LLM cannot cite raw UUIDs or microsecond
+    timestamps in the narrative."""
+    if isinstance(data, dict):
+        return {
+            key: _serialise_for_prompt(value)
+            for key, value in data.items()
+            if key not in _UUID_FIELDS
+        }
+    if isinstance(data, list):
+        return [_serialise_for_prompt(item) for item in data]
+    if isinstance(data, str):
+        return _humanize_date_string(data)
+    return data
 
 
 class InvestigationInput(BaseModel):
@@ -88,7 +142,6 @@ class InvestigationReport(BaseModel):
     recommended_action: str = ""
     recommended_action_type: str | None = None
     reasoning: str = ""
-    data_sources: list[str] = Field(default_factory=list)
     disambiguation_note: str | None = None
 
 
@@ -135,20 +188,15 @@ class CaseInvestigationWorkflow:
     """Deterministic data gathering (steps 1-6) followed by LLM reasoning
     (steps 7-9) producing a structured investigation report."""
 
-    def __init__(self, connection: MCPConnection, llm: ChatOpenAI) -> None:
+    def __init__(self, connection: MCPConnection, llm: BaseChatModel) -> None:
         self._connection = connection
         self._llm = llm
-        self._calls: dict[str, bool] = {}  # tool name -> failed
-        self._call_order: list[str] = []
 
     # ------------------------------------------------------------------
     # Public entry point
     # ------------------------------------------------------------------
 
     async def execute(self, workflow_input: InvestigationInput) -> InvestigationReport:
-        self._calls = {}
-        self._call_order = []
-
         resolved_case_id = workflow_input.case_id
         resolved_case_ref = workflow_input.case_ref
         disambiguation_note: str | None = None
@@ -186,6 +234,11 @@ class CaseInvestigationWorkflow:
         related = await self._call_tool(
             "list_cases", {"customer_id": customer_id, "limit": 20}
         )
+        logger.info(
+            "Investigation step 4 | list_cases | customer_id=%s | got=%s",
+            customer_id,
+            "None" if related is None else f"{len(self._as_list(related))} case(s)",
+        )
         related_cases = [
             item for item in self._as_list(related) if item.get("id") != case_id
         ]
@@ -193,12 +246,16 @@ class CaseInvestigationWorkflow:
         next_actions = await self._call_tool("get_next_actions", {"case_id": case_id})
 
         gathered = {
-            "case_data": json.dumps(case, default=str),
-            "customer_data": json.dumps(customer, default=str),
-            "accounts_data": json.dumps(accounts, default=str),
-            "related_cases_data": json.dumps(related_cases, default=str),
-            "timeline_data": json.dumps(timeline, default=str),
-            "next_actions_data": json.dumps(next_actions, default=str),
+            "case_data": json.dumps(_serialise_for_prompt(case), default=str),
+            "customer_data": json.dumps(_serialise_for_prompt(customer), default=str),
+            "accounts_data": json.dumps(_serialise_for_prompt(accounts), default=str),
+            "related_cases_data": json.dumps(
+                _serialise_for_prompt(related_cases), default=str
+            ),
+            "timeline_data": json.dumps(_serialise_for_prompt(timeline), default=str),
+            "next_actions_data": json.dumps(
+                _serialise_for_prompt(next_actions), default=str
+            ),
         }
 
         # --- Step 7: risk indicators (LLM) ---
@@ -237,7 +294,6 @@ class CaseInvestigationWorkflow:
             recommended_action=recommendation.recommended_action,
             recommended_action_type=recommendation.recommended_action_type,
             reasoning=reasoning,
-            data_sources=self._ordered_data_sources(),
             disambiguation_note=disambiguation_note,
         )
 
@@ -264,24 +320,14 @@ class CaseInvestigationWorkflow:
 
         customer_id = customers[0].get("id")
 
-        open_cases = self._as_list(
+        customer_cases = self._as_list(
             await self._call_tool(
-                "list_cases",
-                {"customer_id": customer_id, "status": "open", "limit": 10},
+                "list_cases", {"customer_id": customer_id, "limit": 20}
             )
         )
-        active_cases = open_cases
-        if not active_cases:
-            active_cases = self._as_list(
-                await self._call_tool(
-                    "list_cases",
-                    {
-                        "customer_id": customer_id,
-                        "status": "under_investigation",
-                        "limit": 10,
-                    },
-                )
-            )
+        active_cases = [
+            c for c in customer_cases if c.get("status") in ACTIVE_CASE_STATUSES
+        ]
 
         if not active_cases:
             return _Resolution(error="No active cases for this customer")
@@ -312,33 +358,52 @@ class CaseInvestigationWorkflow:
     # ------------------------------------------------------------------
 
     async def _call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
-        """Call an MCP tool, tracking success/failure in data sources.
+        """Call an MCP tool, logging failures with full context for debugging.
+
+        Retries once on a transient empty MCP response ("No output
+        returned") before giving up — this has been observed occasionally
+        under rapid back-to-back requests and is not a data error.
 
         Returns parsed JSON (dict/list) or None on failure.
         """
-        if name not in self._calls:
-            self._calls[name] = False
-            self._call_order.append(name)
+        for attempt in range(2):
+            try:
+                raw = await self._connection.call_tool(name, arguments)
+            except Exception:  # noqa: BLE001 — continue with partial data
+                logger.exception(
+                    "Investigation tool call %s raised | args=%s", name, arguments
+                )
+                return None
 
-        try:
-            raw = await self._connection.call_tool(name, arguments)
-        except Exception as exc:  # noqa: BLE001 — continue with partial data
-            logger.warning("Investigation tool call %s raised: %s", name, exc)
-            self._calls[name] = True
-            return None
+            if raw == "No output returned" and attempt == 0:
+                logger.warning(
+                    "Investigation tool call %s returned no output, retrying | args=%s",
+                    name,
+                    arguments,
+                )
+                continue
 
-        if isinstance(raw, str) and raw.startswith("Error:"):
-            logger.warning("Investigation tool call %s failed: %s", name, raw)
-            self._calls[name] = True
-            return None
+            if isinstance(raw, str) and raw.startswith("Error:"):
+                logger.warning(
+                    "Investigation tool call %s failed | args=%s | response=%.300s",
+                    name,
+                    arguments,
+                    raw,
+                )
+                return None
 
-        try:
-            # json.loads handles "null" (not found) distinctly from garbage.
-            return json.loads(raw)
-        except (json.JSONDecodeError, TypeError):
-            logger.warning("Investigation tool call %s returned unparseable data", name)
-            self._calls[name] = True
-            return None
+            try:
+                # json.loads handles "null" (not found) distinctly from garbage.
+                return json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                logger.warning(
+                    "Investigation tool call %s returned unparseable data | args=%s | response=%.300s",
+                    name,
+                    arguments,
+                    raw,
+                )
+                return None
+        return None
 
     # ------------------------------------------------------------------
     # LLM steps
@@ -401,23 +466,8 @@ class CaseInvestigationWorkflow:
             return [item for item in value if isinstance(item, dict)]
         return []
 
-    def _ordered_data_sources(self) -> list[str]:
-        ordered: list[str] = []
-        if "list_customers" in self._calls:
-            ordered.append(self._label("list_customers"))
-        for name in BASE_DATA_SOURCES:
-            if name in self._calls:
-                ordered.append(self._label(name))
-        return ordered
-
-    def _label(self, name: str) -> str:
-        return f"{name} (failed)" if self._calls.get(name) else name
-
     def _error_report(self, message: str) -> InvestigationReport:
-        return InvestigationReport(
-            case_summary=message,
-            data_sources=self._ordered_data_sources(),
-        )
+        return InvestigationReport(case_summary=message)
 
 
 class _Resolution:
@@ -506,5 +556,4 @@ def render_report_markdown(report: InvestigationReport) -> str:
     if report.recommended_action_type:
         action = f"{action} (`{report.recommended_action_type}`)"
     lines += [action, "", "#### Reasoning", report.reasoning or "—", ""]
-    lines += ["#### Data Sources", ", ".join(report.data_sources)]
     return "\n".join(lines)

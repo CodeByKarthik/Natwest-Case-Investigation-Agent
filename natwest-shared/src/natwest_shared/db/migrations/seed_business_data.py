@@ -907,6 +907,46 @@ def seed_business_data() -> None:
         )
         add_case_event_if_missing(
             session,
+            case_id=case_1001.id,
+            event_type="note",
+            event_description="Attempted to reach customer on registered phone — no answer. Left voicemail requesting callback about the Northlake Travel transactions.",
+            created_by_user_id=investigator.id,
+            created_by_system=None,
+            source_record_id=None,
+            created_at=now - timedelta(days=3, hours=6),
+        )
+        add_case_event_if_missing(
+            session,
+            case_id=case_1001.id,
+            event_type="customer_contact",
+            event_description="Customer called back and confirmed she was in Spain on holiday but did not make the flagged transactions. Card physically in her possession throughout.",
+            created_by_user_id=investigator.id,
+            created_by_system=None,
+            source_record_id=None,
+            created_at=now - timedelta(days=3, hours=2),
+        )
+        add_case_event_if_missing(
+            session,
+            case_id=case_1001.id,
+            event_type="note",
+            event_description="Chargeback initiated with merchant acquirer for Northlake Travel transactions totalling £3,475.80. Awaiting acquirer response within 45 days.",
+            created_by_user_id=investigator.id,
+            created_by_system=None,
+            source_record_id=None,
+            created_at=now - timedelta(days=2, hours=8),
+        )
+        add_case_event_if_missing(
+            session,
+            case_id=case_1001.id,
+            event_type="document_received",
+            event_description="Customer submitted travel itinerary and boarding passes confirming she was not near ATM location at time of transactions.",
+            created_by_user_id=investigator.id,
+            created_by_system=None,
+            source_record_id=None,
+            created_at=now - timedelta(days=2, hours=2),
+        )
+        add_case_event_if_missing(
+            session,
             case_id=case_1002.id,
             event_type="system_alert",
             event_description="Transaction monitoring detected a duplicate payment pattern at Harbor Broadband.",
@@ -938,6 +978,56 @@ def seed_business_data() -> None:
         add_case_event_if_missing(
             session,
             case_id=case_1003.id,
+            event_type="note",
+            event_description="Initial complaint logged. Customer distressed — collections agent contacted her three days after bereavement notification was on file.",
+            created_by_user_id=support.id,
+            created_by_system=None,
+            source_record_id=None,
+            created_at=now - timedelta(days=2, hours=1),
+        )
+        add_case_event_if_missing(
+            session,
+            case_id=case_1003.id,
+            event_type="note",
+            event_description="Vulnerability marker was set 6 hours before collections call — should have suppressed outbound contact. Investigating process failure.",
+            created_by_user_id=manager.id,
+            created_by_system=None,
+            source_record_id=None,
+            created_at=now - timedelta(days=1, hours=20),
+        )
+        add_case_event_if_missing(
+            session,
+            case_id=case_1003.id,
+            event_type="customer_contact",
+            event_description="Called customer to apologise personally. She accepted apology but wants written confirmation that no further contact will occur until she initiates.",
+            created_by_user_id=manager.id,
+            created_by_system=None,
+            source_record_id=None,
+            created_at=now - timedelta(days=1, hours=12),
+        )
+        add_case_event_if_missing(
+            session,
+            case_id=case_1003.id,
+            event_type="note",
+            event_description="Contact suppression flag set on account. Confirmation letter drafted for compliance review before sending.",
+            created_by_user_id=manager.id,
+            created_by_system=None,
+            source_record_id=None,
+            created_at=now - timedelta(days=1, hours=4),
+        )
+        add_case_event_if_missing(
+            session,
+            case_id=case_1003.id,
+            event_type="document_received",
+            event_description="Compliance review of draft response received. Approved with minor amendments to make language more empathetic.",
+            created_by_user_id=manager.id,
+            created_by_system=None,
+            source_record_id=None,
+            created_at=now - timedelta(hours=12),
+        )
+        add_case_event_if_missing(
+            session,
+            case_id=case_1003.id,
             event_type="escalation",
             event_description="Escalated to case management for Consumer Duty review before any further customer contact.",
             created_by_user_id=manager.id,
@@ -954,6 +1044,46 @@ def seed_business_data() -> None:
             created_by_system="fraud_engine",
             source_record_id=fe_9055.id,
             created_at=now - timedelta(days=1),
+        )
+        add_case_event_if_missing(
+            session,
+            case_id=case_1004.id,
+            event_type="note",
+            event_description="Card testing pattern — small £1.99 authorisation followed by £89.99 attempt. Classic pre-fraud probing behaviour. Card frozen automatically by fraud engine.",
+            created_by_user_id=investigator.id,
+            created_by_system=None,
+            source_record_id=None,
+            created_at=now - timedelta(hours=20),
+        )
+        add_case_event_if_missing(
+            session,
+            case_id=case_1004.id,
+            event_type="note",
+            event_description="QuickPay Digital not on customer's usual merchant list. Reviewing account history for related transactions in last 30 days.",
+            created_by_user_id=investigator.id,
+            created_by_system=None,
+            source_record_id=None,
+            created_at=now - timedelta(hours=16),
+        )
+        add_case_event_if_missing(
+            session,
+            case_id=case_1004.id,
+            event_type="customer_contact",
+            event_description="Called customer to verify. Customer confirmed he did not make these transactions and does not recognise QuickPay Digital as a merchant.",
+            created_by_user_id=investigator.id,
+            created_by_system=None,
+            source_record_id=None,
+            created_at=now - timedelta(hours=12),
+        )
+        add_case_event_if_missing(
+            session,
+            case_id=case_1004.id,
+            event_type="note",
+            event_description="Customer verification confirms unauthorised use. Requesting replacement card and initiating refund of £89.99 to credit card statement.",
+            created_by_user_id=investigator.id,
+            created_by_system=None,
+            source_record_id=None,
+            created_at=now - timedelta(hours=8),
         )
         add_case_event_if_missing(
             session,
@@ -1029,6 +1159,16 @@ def seed_business_data() -> None:
         )
         add_next_action_if_missing(
             session,
+            case_id=case_1001.id,
+            action_type="add_case_note",
+            description="Log chargeback tracking reference from Northlake Travel acquirer once received.",
+            due_date=now + timedelta(days=7),
+            status="open",
+            assigned_user_id=investigator.id,
+            created_by_user_id=investigator.id,
+        )
+        add_next_action_if_missing(
+            session,
             case_id=case_1002.id,
             action_type="request_documents",
             description="Request the merchant cancellation confirmation and bank statement evidence.",
@@ -1059,10 +1199,30 @@ def seed_business_data() -> None:
         )
         add_next_action_if_missing(
             session,
+            case_id=case_1003.id,
+            action_type="contact_customer",
+            description="Wellness check follow-up call in 7 days to confirm no further collections contact has occurred.",
+            due_date=now + timedelta(days=8),
+            status="open",
+            assigned_user_id=manager.id,
+            created_by_user_id=manager.id,
+        )
+        add_next_action_if_missing(
+            session,
             case_id=case_1004.id,
             action_type="contact_customer",
             description="Verify the QuickPay Digital transactions and confirm whether to reissue the card.",
             due_date=now + timedelta(days=2),
+            status="open",
+            assigned_user_id=investigator.id,
+            created_by_user_id=investigator.id,
+        )
+        add_next_action_if_missing(
+            session,
+            case_id=case_1004.id,
+            action_type="issue_refund",
+            description="Process £89.99 refund to David's credit card once new card is issued.",
+            due_date=now + timedelta(days=3),
             status="open",
             assigned_user_id=investigator.id,
             created_by_user_id=investigator.id,

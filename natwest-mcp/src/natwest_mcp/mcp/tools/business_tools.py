@@ -249,3 +249,32 @@ async def manage_next_action(
     if action is None:
         raise ToolError("Next action not found")
     return NextActionRead.model_validate(action)
+
+
+async def add_case_note(
+    case_id: UUID,
+    note_text: Annotated[
+        str,
+        Field(
+            description="Free-text note to append to the case timeline",
+            min_length=1,
+            max_length=8000,
+        ),
+    ],
+    *,
+    service: BusinessService = Depends(get_business_service),
+) -> CaseEventRead:
+    """Append a free-text note to a case's timeline. Write operation —
+    available to every role (customer_support, fraud_investigator,
+    case_manager) with no RBAC restriction, since notes are audit-trail
+    additions rather than case management decisions."""
+    business_service = cast(BusinessService, service)
+    try:
+        event = business_service.add_case_note(
+            case_id=case_id, note_text=note_text.strip()
+        )
+    except (ValueError, PermissionDenied) as exc:
+        _raise_as_tool_error(exc)
+    if event is None:
+        raise ToolError("Case not found")
+    return CaseEventRead.model_validate(event)

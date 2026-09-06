@@ -5,6 +5,7 @@ from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
 from .business_tools import (
+    add_case_note,
     get_case_details,
     get_case_timeline,
     get_customer_accounts,
@@ -26,6 +27,7 @@ TOOLS: list[tuple[Callable[..., Any], ToolAnnotations | None]] = [
     (update_case_status, None),
     (get_next_actions, ToolAnnotations(read_only_hint=True)),
     (manage_next_action, None),
+    (add_case_note, None),
 ]
 
 

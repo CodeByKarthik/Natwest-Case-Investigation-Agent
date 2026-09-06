@@ -12,10 +12,10 @@ from natwest_backend.agent.prompts import (
 from natwest_backend.agent.shared.memory import trim_to_turns
 from natwest_backend.agent.shared.state import AgentState
 from natwest_shared.utils.logger import get_logger
+from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool
-from langchain_openai import ChatOpenAI
 
 logger = get_logger(__name__)
 
@@ -42,7 +42,7 @@ def get_tools_for_category(
 
 
 def create_agent_node(
-    llm: ChatOpenAI,
+    llm: BaseChatModel,
     *,
     operational_tools: list[BaseTool],
     investigation_tools: list[BaseTool],
