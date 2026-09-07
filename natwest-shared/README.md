@@ -1,94 +1,112 @@
 # natwest-shared
 
-Shared library used by both the backend and MCP server. Contains database models, repositories, services, authentication, RBAC, schemas, and migrations.
+Shared domain and infrastructure library for the NatWest Case Investigation Agent. It defines the database schema, auth contracts, RBAC rules, service logic, and migration/seed entry points used by the backend and MCP server.
 
 ## Structure
 
 ```
 src/natwest_shared/
-├── config.py                          # Shared settings (database URL, Keycloak config)
+├── config.py                                              # Shared configuration for database, auth and service runtime settings
 │
-├── auth/                              # Authentication and authorisation
-│   ├── keycloak.py                    # JWT verification via JWKS, token payload validation
-│   └── rbac.py                        # Role definitions (READ, WRITE, ADMIN) and checks
+├── auth/                                                  # Authentication and authorisation
+│   ├── keycloak.py                                        # JWT validation against Keycloak and token payload parsing
+│   └── rbac.py                                            # NatWest role definitions, permission checks and closure rules
 │
-├── common/                            # Shared types and exceptions
-│   ├── enums.py                       # AppRole, CustomerTier, IssueStatus, IssuePriority, etc.
-│   └── exceptions.py                  # AuthError, PermissionDenied, AppUserNotFoundError
+├── common/                                                # Shared types, enums and exceptions
+│   ├── enums.py                                           # AppRole, case status, customer tier and next-action enums
+│   └── exceptions.py                                      # Domain exceptions for auth and permission failures
 │
-├── db/                                # Database layer
-│   ├── base.py                        # SQLAlchemy declarative base
-│   ├── session.py                     # Engine and session factory
-│   ├── models/
-│   │   ├── user.py                    # AppRole, AppUser models
-│   │   └── business.py               # Customer, Issue, IssueUpdate, NextAction models
-│   ├── repositories/
-│   │   ├── user_repository.py         # User lookup, Keycloak ID linking
-│   │   ├── business_read_repository.py  # Read-only queries (customers, issues, updates, actions)
-│   │   └── business_write_repository.py # Write operations (status updates, issue updates, actions)
-│   └── migrations/
-│       ├── seed_users.py              # Seeds 3 roles + 3 users (sales, support, admin)
-│       └── seed_business_data.py      # Seeds 3 customers, 4 issues, updates, actions
+├── db/                                                    # Database model and persistence layer
+│   ├── base.py                                            # SQLAlchemy declarative base
+│   ├── session.py                                         # Engine and session factory for Postgres access
+│   ├── models/                                            # Domain models for users, customers and investigations
+│   │   ├── user.py                                        # AppRole and AppUser model definitions
+│   │   └── business.py                                   # Customer, Account, Case, Event, Vulnerability and NextAction models
+│   ├── repositories/                                      # Data access objects for reads and writes
+│   │   ├── user_repository.py                             # User lookup and Keycloak linkage helpers
+│   │   ├── business_read_repository.py                    # Read-only repository methods for customer and case data
+│   │   └── business_write_repository.py                   # Update and audit-write repository methods
+│   └── migrations/                                        # Seed scripts and database bootstrap helpers
+│       ├── seed_users.py                                  # Seeds NatWest roles and staff users for local development
+│       └── seed_business_data.py                          # Seeds customer, case, account and investigation data
 │
-├── services/                          # Business logic
-│   ├── auth_context_service.py        # JWT → AuthContext pipeline (verify, resolve, match role)
-│   └── business_service.py            # Permission-aware facade over read/write repositories
+├── services/                                              # Business logic layer
+│   ├── auth_context_service.py                            # Builds AuthContext from verified JWTs and local user records
+│   └── business_service.py                                # Permission-aware service façade for case and customer operations
 │
-├── schema/                            # Pydantic models
-│   ├── auth_schema.py                 # KeycloakTokenPayload, AuthenticatedUser, AuthContext
-│   ├── business_schema.py             # CustomerRead, IssueRead, IssueUpdateRead, NextActionRead
-│   └── chat_schema.py                 # ChatRequest, ChatResponse
+├── schema/                                                # Pydantic schemas for API contracts
+│   ├── auth_schema.py                                     # JWT and auth-context schemas
+│   ├── business_schema.py                                 # Read models for customer, account, case and action data
+│   └── chat_schema.py                                     # Chat request and response payloads
 │
-└── utils/
-    └── logger.py                      # Structured logging configuration
+├── utils/                                                # Utility helpers
+│   └── logger.py                                          # Shared structured logging configuration
+│
+├── __init__.py                                            # Package marker
+└── py.typed                                               # Package typing marker
 
-alembic/                               # Database migrations
-├── env.py                             # Alembic environment config
-└── versions/
-    ├── 97b1ddf51c6c_create_app_roles_and_users.py
-    └── 35b4fd9dc5f3_create_business_tables.py
+alembic/                                                   # Alembic migration definitions
+├── env.py                                                 # Migration environment configuration
+├── README                                                 # Notes on the migration workflow
+└── versions/                                              # Versioned schema history
+    ├── 97b1ddf51c6c_create_app_roles_and_users.py        # Creates app roles and internal users
+    └── 35b4fd9dc5f3_create_business_tables.py             # Creates customer, case and investigation tables
 
-scripts/
-└── db_entrypoint.sh                   # Migration runner + seed executor for Docker
+scripts/                                                   # Operational scripts
+└── db_entrypoint.sh                                       # Runs migrations and seed tasks during container startup
 ```
 
-## Database schema
+## Domain model
 
-### Users and roles
+The NatWest case model is centred around the customer and the investigation case:
 
-- **app_roles** — three roles: `sales_user`, `support_user`, `admin`
-- **app_users** — linked to Keycloak via `keycloak_user_id`, assigned one role
+- `Customer` — customer profile, KYC status, tier, and vulnerability summary
+- `Account` — account details and balances attached to a customer
+- `Case` — the investigation case, status, priority, type and business context
+- `CaseEvent` — chronological operational and system-generated events
+- `NextAction` — follow-up work item assigned to a case
+- `SourceSystemRecord` — raw alert payloads from external monitoring systems
+- `VulnerabilityRegister` — vulnerability and resilience signals tracked against a customer
 
-### Business data
+## RBAC rules
 
-- **customers** — name, industry, tier (smb/mid_market/enterprise), health status, contract value
-- **issues** — linked to a customer, external reference (ISSUE-101), status, priority, assignee, due date
-- **issue_updates** — timeline entries per issue, with author and customer visibility flag
-- **next_actions** — follow-up tasks per issue, typed (customer_update, technical_investigation, etc.), with owner and status
+The role model is enforced centrally in `natwest_shared.auth.rbac`:
 
-## RBAC model
+- `customer_support` — read-only access
+- `fraud_investigator` — can read and update active case status
+- `case_manager` — can read, update status and manage next actions
 
-| Role | Read | Write (issues) | Admin (actions) |
-|------|------|----------------|-----------------|
-| sales_user | ✅ | ❌ | ❌ |
-| support_user | ✅ | ✅ | ❌ |
-| admin | ✅ | ✅ | ✅ |
+Terminal case states such as `resolved` and `closed` are restricted to the case manager path.
 
-Enforced by `rbac.py` → `require_role()` called in `BusinessService` before every operation.
+## Service behaviour
 
-## Auth flow
+`BusinessService` is the main permission-aware domain entry point. It validates:
 
-1. `KeycloakTokenVerifier` validates JWT signature, expiry, issuer, and client binding
-2. `AuthContextService` resolves the app user by username, matches token roles to app role
-3. First login links the Keycloak user ID to the app user record
-4. Returns `AuthContext(app_user_id, username, role)` used by all downstream services
+- role access for each operation
+- valid status and enum transitions
+- existence of the target case or customer
+- whether a write action is allowed before a case is terminal
+
+This keeps the business rules in one place and ensures the backend and MCP layers share the same policy model.
 
 ## Seed data
 
-Example: Three customers pre-loaded for demonstration:
+The seed layer creates the internal NatWest staff roles and a representative set of customer investigation records for local demos and automated validation.
 
-| Customer | Industry | Tier | Health | Issues |
-|----------|----------|------|--------|--------|
-| Globex Corporation | Financial Services | Enterprise | At risk | ISSUE-101, ISSUE-102 |
-| Initech | Technology | Mid-market | Healthy | ISSUE-201 |
-| Umbrella Retail | Retail | Enterprise | Watch | ISSUE-301 |
+This includes:
+
+- internal user accounts for support, investigation and case management
+- realistic customer records and accounts
+- case histories across fraud, dispute and complaint types
+- vulnerability/event timeline entries
+- next actions with open and completed states
+
+## Local database setup
+
+```bash
+cd natwest-shared
+uv run python -m natwest_shared.db.migrations.seed_users
+uv run python -m natwest_shared.db.migrations.seed_business_data
+```
+
+The database layer is intended to run through the Docker stack during normal development, but the individual migration and seed scripts can be executed directly when needed.

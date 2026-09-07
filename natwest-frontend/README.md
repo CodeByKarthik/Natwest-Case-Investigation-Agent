@@ -1,48 +1,61 @@
 # natwest-frontend
 
-Streamlit chat interface with Keycloak OAuth 2.0 authentication.
+Streamlit user interface for the NatWest Case Investigation Agent. It provides the internal case worker experience for sign-in, conversation handling, and safe interaction with the backend investigation API.
 
 ## Structure
 
 ```
 src/natwest_frontend/
-├── app.py                  # Streamlit entry point — auth routing, page config
-├── config.py               # Frontend settings (Keycloak URLs, API endpoint, ports)
+├── app.py                                              # Streamlit entry point with authentication gate and page setup
+├── config.py                                           # Frontend configuration for Keycloak and API endpoints
 │
-├── auth/                   # Authentication
-│   ├── oauth.py            # OAuth state generation and HMAC validation
-│   └── session.py          # Token exchange, refresh, storage, logout, JWT decoding
+├── auth/                                               # Session and OAuth handling
+│   ├── oauth.py                                        # OAuth state creation and HMAC validation
+│   └── session.py                                      # Token exchange, validation, refresh and logout logic
 │
-├── client/                 # API communication
-│   └── api_client.py       # POST /api/chat with bearer token, conversation ID, timeouts
+├── client/                                             # API integration layer
+│   └── api_client.py                                   # Calls the backend /api/chat endpoint with the user bearer token
 │
-├── ui/                     # User interface
-│   ├── login.py            # Branded login page with Keycloak SSO link
-│   └── assistant.py        # Chat UI — message history, sidebar, input handling
+├── ui/                                                 # User-facing screens
+│   ├── login.py                                        # Keycloak SSO login screen for NatWest staff
+│   └── assistant.py                                    # Assistant chat view with session state and message rendering
 │
-└── utils/
-    └── logger.py           # Structured logging for frontend events
+├── utils/                                              # Supporting helpers
+│   └── logger.py                                       # Frontend logging utilities
+│
+├── __init__.py                                         # Package marker
+└── py.typed                                            # Typing marker for the package
 ```
 
 ## Auth flow
 
-1. User opens the app → `login.py` renders with a Keycloak SSO link
-2. User authenticates at Keycloak → redirected back with an auth code
-3. `session.py` exchanges the code for JWT tokens (access + refresh)
-4. Tokens stored in `st.session_state`, forwarded with every API call
-5. Token refresh happens automatically before expiry (30-second skew)
+1. The user opens the Streamlit app and lands on the login screen.
+2. The frontend generates a secure OAuth state and redirects the user to Keycloak.
+3. Keycloak returns the code and the frontend exchanges it for tokens.
+4. Access tokens are stored in the session and included in backend API calls.
+5. Expired tokens are refreshed automatically before the user continues the flow.
 
 ## Chat flow
 
-1. User types a message in `st.chat_input`
-2. `api_client.py` sends `POST /api/chat` with the bearer token and conversation ID
-3. Response displayed via `st.chat_message`
-4. Full message history maintained in `st.session_state` for the session
+1. The user enters a case or operational query in the chat UI.
+2. The frontend sends the message to the backend API with the current bearer token.
+3. The backend runs the investigation workflow and returns a grounded response.
+4. The frontend renders the response and keeps the conversation history in session state.
 
-## Features
+## Operational use
 
-- OAuth 2.0 with HMAC-signed state parameter to prevent CSRF
-- Automatic token refresh before expiry
-- Conversation ID tracking for Redis-backed multi-turn memory
-- New conversation button clears session and generates a fresh ID
-- Sidebar shows authenticated user and role
+The frontend is intentionally simple and secure:
+
+- single sign-on is handled through Keycloak
+- each request uses the user’s validated token
+- the session can be reset with a fresh conversation
+- the sidebar surfaces authenticated user and role context
+
+## Local run
+
+```bash
+cd natwest-frontend
+uv run streamlit run src/natwest_frontend/app.py
+```
+
+This is typically used in conjunction with the Docker Compose stack for normal application execution.
