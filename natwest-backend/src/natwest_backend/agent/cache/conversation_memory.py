@@ -4,7 +4,6 @@ import json
 from typing import Any
 
 import redis.asyncio as aioredis
-from natwest_shared.utils.logger import get_logger
 from langchain_core.messages import (
     AIMessage,
     AnyMessage,
@@ -12,6 +11,7 @@ from langchain_core.messages import (
     SystemMessage,
     ToolMessage,
 )
+from natwest_shared.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

@@ -1,12 +1,13 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from fastapi import APIRouter, BackgroundTasks, Depends, Header
+from natwest_shared.schema.auth_schema import AuthContext
+from natwest_shared.schema.chat_schema import ChatRequest, ChatResponse
+
 from natwest_backend.agent.evaluation import run_background_evaluation
 from natwest_backend.agent.service import AgentService
 from natwest_backend.api.auth import extract_bearer_token, get_auth_context
-from natwest_shared.schema.auth_schema import AuthContext
-from natwest_shared.schema.chat_schema import ChatRequest, ChatResponse
-from fastapi import APIRouter, BackgroundTasks, Depends, Header
 
 router = APIRouter(prefix="/api", tags=["chat"])
 

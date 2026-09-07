@@ -4,8 +4,8 @@ from .scorer import score_response
 from .scores import EvaluationScores
 
 __all__ = [
-    "score_response",
     "EvaluationScores",
     "log_evaluation_to_langsmith",
     "run_background_evaluation",
+    "score_response",
 ]

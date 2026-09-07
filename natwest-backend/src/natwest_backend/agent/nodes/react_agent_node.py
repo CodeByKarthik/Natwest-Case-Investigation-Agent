@@ -2,6 +2,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import SystemMessage
+from langchain_core.runnables import RunnableConfig
+from langchain_core.tools import BaseTool
+from natwest_shared.utils.logger import get_logger
+
 from natwest_backend.agent.graph.conditions import MAX_TOOL_CALLS
 from natwest_backend.agent.graph.routing import IntentCategory
 from natwest_backend.agent.prompts import (
@@ -11,11 +17,6 @@ from natwest_backend.agent.prompts import (
 )
 from natwest_backend.agent.shared.memory import trim_to_turns
 from natwest_backend.agent.shared.state import AgentState
-from natwest_shared.utils.logger import get_logger
-from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import SystemMessage
-from langchain_core.runnables import RunnableConfig
-from langchain_core.tools import BaseTool
 
 logger = get_logger(__name__)
 

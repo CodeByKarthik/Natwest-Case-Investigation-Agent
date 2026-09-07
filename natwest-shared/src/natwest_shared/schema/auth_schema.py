@@ -1,5 +1,6 @@
-from natwest_shared.common.enums import AppRole
 from pydantic import BaseModel, Field
+
+from natwest_shared.common.enums import AppRole
 
 
 class RealmAccess(BaseModel):

@@ -6,6 +6,7 @@ from typing import Any
 
 import requests
 import streamlit as st
+
 from natwest_frontend.auth.session import ensure_valid_token
 from natwest_frontend.config import settings  # type: ignore[import-untyped]
 from natwest_frontend.utils.logger import get_logger

@@ -1,11 +1,12 @@
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
-
 from natwest_shared.config import settings
-from natwest_shared.db import models  # noqa: F401  # pyright: ignore[reportUnusedImport]
+from natwest_shared.db import (
+    models,  # noqa: F401  # pyright: ignore[reportUnusedImport]
+)
 from natwest_shared.db.base import Base
+from sqlalchemy import engine_from_config, pool
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)

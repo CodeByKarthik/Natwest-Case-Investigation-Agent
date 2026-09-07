@@ -1,10 +1,11 @@
 from uuid import UUID
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from natwest_shared.common.exceptions import AppUserNotFoundError
 from natwest_shared.db.models import AppRole, AppUser
 from natwest_shared.schema.auth_schema import AppUserDTO
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 
 class AppUserRepository:

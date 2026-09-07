@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from natwest_backend.config import settings
-from natwest_shared.utils.logger import get_logger
 from langchain_core.callbacks import AsyncCallbackHandler
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
+from natwest_shared.utils.logger import get_logger
 from pydantic import SecretStr
+
+from natwest_backend.config import settings
 
 logger = get_logger(__name__)
 

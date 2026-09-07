@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import HumanMessage
+from langchain_core.runnables import RunnableConfig
+from natwest_shared.utils.logger import get_logger
+
 from natwest_backend.agent.graph.routing import (
     DEFAULT_CATEGORY,
     VALID_CATEGORIES,
@@ -10,10 +15,6 @@ from natwest_backend.agent.graph.routing import (
 from natwest_backend.agent.prompts import ROUTER_CLASSIFICATION_PROMPT
 from natwest_backend.agent.shared.parsing import content_to_text
 from natwest_backend.agent.shared.state import AgentState
-from natwest_shared.utils.logger import get_logger
-from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import HumanMessage
-from langchain_core.runnables import RunnableConfig
 
 logger = get_logger(__name__)
 
@@ -66,7 +67,7 @@ def create_router_node(llm: BaseChatModel) -> Any:
 
     async def router_node(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
         last_message = state["messages"][-1]
-        user_text = content_to_text(getattr(last_message, "content"))
+        user_text = content_to_text(last_message.content)
         history = _format_history(state)
 
         try:
@@ -81,7 +82,7 @@ def create_router_node(llm: BaseChatModel) -> Any:
                 ],
                 config=config,
             )
-            raw = content_to_text(getattr(response, "content"))
+            raw = content_to_text(response.content)
         except Exception:
             # If classification fails, treat the message as an operational
             # query so the agent can still try to help with the full toolset.

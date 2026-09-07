@@ -3,7 +3,6 @@ from typing import cast
 from uuid import uuid4
 
 import pytest
-
 from natwest_shared.auth.rbac import ADMIN_ROLES, READ_ROLES, WRITE_ROLES
 from natwest_shared.common.enums import (
     AppRole,
@@ -382,7 +381,9 @@ def test_customer_support_blocked_from_update_case_status() -> None:
         ),
     )
 
-    with pytest.raises(PermissionDenied, match="Customer support cannot update case status"):
+    with pytest.raises(
+        PermissionDenied, match="Customer support cannot update case status"
+    ):
         service.update_case_status(
             case_id=write_repo.case.id,
             new_status=CaseStatusEnum.UNDER_INVESTIGATION,
@@ -415,7 +416,8 @@ def test_fraud_investigator_blocked_from_manage_next_action() -> None:
     )
 
     with pytest.raises(
-        PermissionDenied, match="Fraud investigators cannot create or manage next actions"
+        PermissionDenied,
+        match="Fraud investigators cannot create or manage next actions",
     ):
         service.manage_next_action(operation="complete", action_id=uuid4(), fields={})
 
@@ -433,7 +435,9 @@ def test_add_case_note_available_to_every_role(role: AppRole) -> None:
         auth_context=AuthContext(app_user_id=str(uuid4()), username="user", role=role),
     )
 
-    event = service.add_case_note(case_id=read_repo.case.id, note_text="Called customer")
+    event = service.add_case_note(
+        case_id=read_repo.case.id, note_text="Called customer"
+    )
 
     assert event is not None
     assert event.event_type == "note"

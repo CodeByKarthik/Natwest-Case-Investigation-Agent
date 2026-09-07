@@ -21,10 +21,18 @@ class Settings(BaseSettings):
     app_version: str = Field(validation_alias="APP_VERSION")
     redis_url: str = Field(validation_alias="REDIS_URL")
 
-    azure_openai_api_key: str = Field(default="", validation_alias="AZURE_OPENAI_API_KEY")
-    azure_openai_endpoint: str = Field(default="", validation_alias="AZURE_OPENAI_ENDPOINT")
-    azure_openai_deployment: str = Field(default="", validation_alias="AZURE_OPENAI_DEPLOYMENT")
-    azure_openai_api_version: str = Field(default="2024-12-01-preview", validation_alias="AZURE_OPENAI_API_VERSION")
+    azure_openai_api_key: str = Field(
+        default="", validation_alias="AZURE_OPENAI_API_KEY"
+    )
+    azure_openai_endpoint: str = Field(
+        default="", validation_alias="AZURE_OPENAI_ENDPOINT"
+    )
+    azure_openai_deployment: str = Field(
+        default="", validation_alias="AZURE_OPENAI_DEPLOYMENT"
+    )
+    azure_openai_api_version: str = Field(
+        default="2024-12-01-preview", validation_alias="AZURE_OPENAI_API_VERSION"
+    )
 
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,

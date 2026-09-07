@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 import streamlit as st
-from natwest_frontend.auth.session import ensure_valid_token, handle_auth_callback, logout
+
+from natwest_frontend.auth.session import (
+    ensure_valid_token,
+    handle_auth_callback,
+    logout,
+)
 from natwest_frontend.ui.assistant import render_assistant
 from natwest_frontend.ui.login import render_login
 

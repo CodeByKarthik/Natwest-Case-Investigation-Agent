@@ -4,7 +4,6 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from natwest_shared.db.base import Base
 from sqlalchemy import (
     Boolean,
     Date,
@@ -19,6 +18,8 @@ from sqlalchemy import (
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from natwest_shared.db.base import Base
 
 
 class Customer(Base):
@@ -477,4 +478,4 @@ class NextAction(Base):
 
 
 # Avoid circular import at runtime: only needed for relationship typing.
-from natwest_shared.db.models.user import AppUser  # noqa: E402, F401
+from natwest_shared.db.models.user import AppUser

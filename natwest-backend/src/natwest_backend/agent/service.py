@@ -4,11 +4,12 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import uuid4
 
-from natwest_backend.agent.cache import ConversationMemory, ToolResultCache, get_redis
-from natwest_backend.config import settings
+from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, ToolMessage
 from natwest_shared.schema.auth_schema import AuthContext
 from natwest_shared.utils.logger import get_logger
-from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, ToolMessage
+
+from natwest_backend.agent.cache import ConversationMemory, ToolResultCache, get_redis
+from natwest_backend.config import settings
 
 from .graph_builder import build_graph
 from .mcp_client import connect_mcp

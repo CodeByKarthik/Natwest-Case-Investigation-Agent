@@ -1,4 +1,4 @@
-from natwest_shared.auth.rbac import READ_ROLES, WRITE_ROLES, ADMIN_ROLES
+from natwest_shared.auth.rbac import ADMIN_ROLES, READ_ROLES, WRITE_ROLES
 from natwest_shared.common.enums import AppRole
 
 
