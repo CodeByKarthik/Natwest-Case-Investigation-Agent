@@ -1,58 +1,68 @@
 # natwest-mcp
 
-FastMCP server exposing eleven business tools over streamable HTTP with per-request JWT validation and RBAC enforcement.
+FastMCP server for the NatWest Case Investigation Agent. It exposes the customer and case operations used by the agent behind a secure HTTP transport and validates every request with the NatWest auth model before the operation is executed.
 
 ## Structure
 
 ```
 src/natwest_mcp/
-├── mcp/
-│   ├── server.py              # FastMCP app factory, server entry point
-│   ├── dependencies.py        # Bearer token extraction, auth context builder
-│   └── tools/
-│       ├── tool_registry.py   # Tool registration with read-only annotations
-│       └── business_tools.py  # All 11 tool implementations
+├── __init__.py                                         # Package marker
+├── mcp/                                               # MCP server implementation
+│   ├── server.py                                       # Creates the FastMCP server and exposes the tool registry
+│   ├── dependencies.py                                 # Extracts bearer tokens and resolves the business service for a request
+│   └── tools/                                          # Business tools exposed to the agent
+│       ├── tool_registry.py                            # Registers available NatWest tools with FastMCP
+│       └── business_tools.py                           # Implements customer, case and action operations exposed to the agent
+└── py.typed                                            # Typing marker for the package
 ```
 
-## Tools
+## Tool categories
 
-### Read tools (all roles)
+### Read access tools
 
-| Tool | Description |
-|------|-------------|
-| `list_customers` | List all customers with health status |
-| `get_customer_by_name` | Find customer by partial name match |
-| `list_open_issues` | Open, in-progress, or blocked issues for a customer |
-| `get_issue_by_external_ref` | Find issue by reference (e.g. ISSUE-101) |
-| `list_issue_updates` | Timeline of updates for an issue |
-| `list_next_actions` | Pending actions for an issue |
+These tools are available to authorised readers across the NatWest roles:
 
-### Write tools (support + admin)
+- `list_customers` — returns customers with filters such as tier, KYC state or vulnerability flag
+- `get_customer_profile` — fetches the full customer profile and linked account context
+- `get_customer_accounts` — lists accounts attached to a customer
+- `list_cases` — finds cases using filters such as status, priority or case type
+- `get_case_details` — fetches a single case by ID or case reference
+- `get_case_timeline` — returns the chronological case event history
+- `get_next_actions` — lists open follow-up work on a case
 
-| Tool | Description |
-|------|-------------|
-| `update_issue_status` | Change issue status |
-| `add_issue_update` | Add a progress note to an issue |
+### Write access tools
 
-### Admin tools (admin only)
+These tools are available to investigators and managers who have case write permissions:
 
-| Tool | Description |
-|------|-------------|
-| `create_next_action` | Create a follow-up action |
-| `update_next_action` | Modify an existing action |
-| `complete_next_action` | Mark an action as completed |
+- `update_case_status` — moves a case through its operational lifecycle
+- `add_case_note` — appends a note to the case timeline for audit purposes
 
-## Security
+### Manager-only tools
 
-Every tool call goes through `dependencies.py` which:
+These tools are restricted to `case_manager` and enforce stricter operational control:
 
-1. Extracts the bearer token from the HTTP `Authorization` header
-2. Validates the JWT against Keycloak's JWKS endpoint
-3. Resolves the application user and role from PostgreSQL
-4. Builds a permission-aware `BusinessService` that enforces RBAC
+- `manage_next_action` — create, update or complete follow-up action items
 
-This validation is independent of the backend's authentication — the MCP server does not trust upstream callers. A tool call with an invalid or expired token is rejected regardless of how it was initiated.
+## Security model
 
-## Transport
+Every MCP request goes through the same principles as the rest of the app:
 
-The server runs on streamable HTTP (port 9001) rather than stdio, enabling network-based communication from the backend container. Bearer tokens are forwarded on every request by the backend's MCP client adapter.
+1. extract the bearer token from the `Authorization` header
+2. validate the token with the Keycloak JWKS configuration
+3. resolve the authenticated NatWest user and role from the database
+4. load the appropriate business service for permission checks and repository access
+
+The MCP layer does not trust upstream callers. Any invalid, expired or unauthorised request is rejected before the tool executes.
+
+## Transport and runtime
+
+The server runs over streamable HTTP on port `9001` so the backend can make tool calls as a networked service. This also keeps the MCP contract independent from the backend’s own local process boundaries.
+
+## Local run
+
+```bash
+cd natwest-mcp
+uv run python -m natwest_mcp.mcp.server
+```
+
+This is usually launched by Docker Compose, but it can also be started directly during local debugging or smoke testing.
