@@ -4,6 +4,7 @@ The NatWest Case Investigation Agent is a custom LangGraph `StateGraph` not a ge
 
 ## Agent workflow diagram
 
+<img width="2720" height="2480" alt="natwest-agent-architecture" src="https://github.com/user-attachments/assets/a748a18a-ab74-4e12-907d-8cc9ed1b99da" />
 
 
 ## Why a custom StateGraph
