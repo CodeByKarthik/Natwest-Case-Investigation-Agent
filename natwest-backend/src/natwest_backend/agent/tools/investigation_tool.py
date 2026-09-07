@@ -3,14 +3,15 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from langchain_core.tools import BaseTool
+from pydantic import BaseModel, Field
+
 from natwest_backend.agent.mcp_client import MCPConnection
 from natwest_backend.agent.skills.investigation_workflow import (
     CaseInvestigationWorkflow,
     InvestigationInput,
     render_report_markdown,
 )
-from langchain_core.tools import BaseTool
-from pydantic import BaseModel, Field
 
 
 class InvestigationToolInput(BaseModel):

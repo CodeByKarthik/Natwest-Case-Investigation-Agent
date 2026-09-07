@@ -5,7 +5,6 @@ from uuid import uuid4
 from natwest_shared.db.models.business import (
     CaseEvent,
     Customer,
-    NextAction,
     SourceSystemRecord,
     VulnerabilityRegister,
 )

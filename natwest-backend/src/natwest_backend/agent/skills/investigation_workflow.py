@@ -17,6 +17,11 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import SystemMessage
+from natwest_shared.utils.logger import get_logger
+from pydantic import BaseModel, Field, model_validator
+
 from natwest_backend.agent.mcp_client import MCPConnection, safe_json_parse
 from natwest_backend.agent.prompts.skills.investigation import (
     EVIDENCE_GAPS_PROMPT,
@@ -24,10 +29,6 @@ from natwest_backend.agent.prompts.skills.investigation import (
     RISK_INDICATORS_PROMPT,
 )
 from natwest_backend.agent.shared.parsing import content_to_text
-from natwest_shared.utils.logger import get_logger
-from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import SystemMessage
-from pydantic import BaseModel, Field, model_validator
 
 logger = get_logger(__name__)
 
@@ -369,7 +370,7 @@ class CaseInvestigationWorkflow:
         for attempt in range(2):
             try:
                 raw = await self._connection.call_tool(name, arguments)
-            except Exception:  # noqa: BLE001 — continue with partial data
+            except Exception:
                 logger.exception(
                     "Investigation tool call %s raised | args=%s", name, arguments
                 )
@@ -417,9 +418,7 @@ class CaseInvestigationWorkflow:
             response = await self._llm.ainvoke(
                 [SystemMessage(content=prompt.format(**gathered))]
             )
-            return _parse_cited_findings(
-                content_to_text(getattr(response, "content"))
-            ), None
+            return _parse_cited_findings(content_to_text(response.content)), None
         except Exception as exc:  # noqa: BLE001 — report partial results
             logger.warning("Investigation LLM step failed: %s", exc)
             return [], str(exc)
@@ -446,7 +445,7 @@ class CaseInvestigationWorkflow:
                     )
                 ]
             )
-            parsed = safe_json_parse(content_to_text(getattr(response, "content")))
+            parsed = safe_json_parse(content_to_text(response.content))
             if not isinstance(parsed, dict):
                 return _RecommendationResult(), (
                     "recommendation step returned unparseable output"

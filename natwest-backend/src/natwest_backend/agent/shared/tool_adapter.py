@@ -1,7 +1,7 @@
-from typing import Any, Optional, Type, cast
+from typing import Any, Optional, cast
 
-from natwest_shared.utils.logger import get_logger
 from langchain_core.tools import BaseTool
+from natwest_shared.utils.logger import get_logger
 from pydantic import BaseModel, Field, create_model
 
 from ..mcp_client import MCPConnection
@@ -90,7 +90,7 @@ def _is_nullable(prop: dict[str, Any]) -> bool:
 def mcp_schema_to_pydantic(
     tool_name: str,
     schema: dict[str, Any],
-) -> Type[BaseModel]:
+) -> type[BaseModel]:
     """
     Build a Pydantic model from an MCP tool's ``inputSchema``.
 

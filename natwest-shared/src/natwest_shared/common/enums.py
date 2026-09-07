@@ -1,6 +1,5 @@
 import enum
 from enum import StrEnum
-from typing import List
 
 
 class AppRole(StrEnum):
@@ -135,7 +134,7 @@ class StaffTeamEnum(StrEnum):
     CASE_MANAGEMENT = "case_management"
 
 
-def enum_values(enum_class: type[enum.Enum]) -> List[str]:
+def enum_values(enum_class: type[enum.Enum]) -> list[str]:
     """
     Return list of enum values for SQLAlchemy Enum construction.
     """

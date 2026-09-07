@@ -10,9 +10,9 @@ from natwest_shared.db.models.business import (
 from natwest_shared.db.models.user import AppRole, AppUser
 
 __all__ = [
+    "Account",
     "AppRole",
     "AppUser",
-    "Account",
     "Case",
     "CaseEvent",
     "Customer",

@@ -3,8 +3,6 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from natwest_backend.agent.shared.parsing import content_to_text
-from natwest_shared.utils.logger import get_logger
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import (
     AIMessage,
@@ -14,6 +12,9 @@ from langchain_core.messages import (
     ToolMessage,
 )
 from langsmith import tracing_context
+from natwest_shared.utils.logger import get_logger
+
+from natwest_backend.agent.shared.parsing import content_to_text
 
 from .prompts import EVALUATION_PROMPT
 from .scores import EvaluationScores

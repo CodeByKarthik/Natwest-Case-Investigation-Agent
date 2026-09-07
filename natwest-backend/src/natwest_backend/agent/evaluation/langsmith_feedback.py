@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from natwest_shared.utils.logger import get_logger
 from langsmith import Client
+from natwest_shared.utils.logger import get_logger
 
 from .scores import EvaluationScores
 

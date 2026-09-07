@@ -9,6 +9,7 @@ persists in st.session_state for the duration of the session.
 from __future__ import annotations
 
 import streamlit as st
+
 from natwest_frontend.auth.session import get_logged_in_user, logout
 from natwest_frontend.client.api_client import call_agent_api
 from natwest_frontend.utils.logger import get_logger

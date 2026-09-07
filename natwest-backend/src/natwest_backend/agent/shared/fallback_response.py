@@ -3,10 +3,11 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass
 
-from natwest_backend.agent.prompts.skills import DATA_FALLBACK_RESPONSE_PROMPT
-from natwest_backend.agent.shared.parsing import content_to_text
 from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
+
+from natwest_backend.agent.prompts.skills import DATA_FALLBACK_RESPONSE_PROMPT
+from natwest_backend.agent.shared.parsing import content_to_text
 
 
 @dataclass(frozen=True)
@@ -35,4 +36,4 @@ async def build_data_fallback_response(
         error_payload=error_payload,
     )
     response = await llm.ainvoke([SystemMessage(content=prompt)])
-    return content_to_text(getattr(response, "content"))
+    return content_to_text(response.content)

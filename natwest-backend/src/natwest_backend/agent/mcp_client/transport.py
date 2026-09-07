@@ -5,9 +5,9 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import httpx
-from natwest_shared.utils.logger import get_logger
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
+from natwest_shared.utils.logger import get_logger
 
 from .client_connection import MCPConnection
 
@@ -32,12 +32,14 @@ async def connect_mcp(
     headers = {"Authorization": f"Bearer {token}"}
     http_client = httpx.AsyncClient(headers=headers)
 
-    async with http_client:
-        async with streamable_http_client(
+    async with (
+        http_client,
+        streamable_http_client(
             url=url,
             http_client=http_client,  # type: ignore[arg-type]
-        ) as (read_stream, write_stream):
-            async with ClientSession(read_stream, write_stream) as session:
-                await session.initialize()
-                logger.info("MCP session established: %s", url)
-                yield MCPConnection(session, tool_cache=tool_cache)
+        ) as (read_stream, write_stream),
+    ):
+        async with ClientSession(read_stream, write_stream) as session:
+            await session.initialize()
+            logger.info("MCP session established: %s", url)
+            yield MCPConnection(session, tool_cache=tool_cache)

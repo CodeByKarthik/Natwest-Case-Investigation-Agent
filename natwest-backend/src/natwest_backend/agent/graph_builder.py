@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from natwest_shared.utils.logger import get_logger
 from langchain_core.tools import BaseTool
 from langgraph.graph import (
     END,
@@ -10,6 +9,7 @@ from langgraph.graph import (
     StateGraph,
 )
 from langgraph.prebuilt import ToolNode
+from natwest_shared.utils.logger import get_logger
 
 from .graph.conditions import route_after_guardrail, route_after_tools, should_continue
 from .mcp_client import MCPConnection

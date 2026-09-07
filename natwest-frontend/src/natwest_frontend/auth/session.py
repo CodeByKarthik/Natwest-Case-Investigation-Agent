@@ -8,6 +8,7 @@ from urllib.parse import urlencode
 
 import requests
 import streamlit as st
+
 from natwest_frontend.auth.oauth import create_oauth_state, validate_oauth_state
 from natwest_frontend.config import settings  # type: ignore[import-untyped]
 from natwest_frontend.utils.logger import get_logger

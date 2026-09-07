@@ -28,7 +28,6 @@ import json
 import subprocess
 import sys
 import time
-import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -67,7 +66,7 @@ def load_env_file(path: Path) -> None:
 
 load_env_file(ENV_FILE)
 
-import os  # noqa: E402
+import os
 
 KEYCLOAK_URL = os.environ.get("KEYCLOAK_URL", "http://localhost:8080")
 KEYCLOAK_REALM = os.environ.get("KEYCLOAK_REALM", "natwest")

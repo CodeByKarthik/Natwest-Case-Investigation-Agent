@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from natwest_shared.utils.logger import get_logger
 from mcp import ClientSession
 from mcp.types import Tool as MCPToolDefinition
+from natwest_shared.utils.logger import get_logger
 
 from .result_parser import extract_text_content
 

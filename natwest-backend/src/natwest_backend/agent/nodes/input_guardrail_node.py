@@ -3,13 +3,14 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from natwest_backend.agent.prompts.guardrails import INPUT_GUARDRAIL_PROMPT
-from natwest_backend.agent.shared.parsing import content_to_text
-from natwest_backend.agent.shared.state import AgentState
-from natwest_shared.utils.logger import get_logger
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
+from natwest_shared.utils.logger import get_logger
+
+from natwest_backend.agent.prompts.guardrails import INPUT_GUARDRAIL_PROMPT
+from natwest_backend.agent.shared.parsing import content_to_text
+from natwest_backend.agent.shared.state import AgentState
 
 logger = get_logger(__name__)
 
@@ -86,7 +87,7 @@ def create_input_guardrail_node(llm: BaseChatModel) -> Any:
         state: AgentState, config: RunnableConfig
     ) -> dict[str, Any]:
         last_message = state["messages"][-1]
-        user_text = content_to_text(getattr(last_message, "content"))
+        user_text = content_to_text(last_message.content)
 
         # --- Layer 1: Pattern matching ---
         matched = _pattern_check(user_text)
@@ -111,7 +112,7 @@ def create_input_guardrail_node(llm: BaseChatModel) -> Any:
                 config=config,
             )
 
-            verdict_raw = content_to_text(getattr(response, "content")).strip().upper()
+            verdict_raw = content_to_text(response.content).strip().upper()
             # Only block on an unambiguous verdict — strip surrounding quotes
             # and take the first word so trailing commentary cannot trigger
             # a false positive.

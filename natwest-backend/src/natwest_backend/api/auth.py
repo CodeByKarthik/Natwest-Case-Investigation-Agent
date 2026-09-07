@@ -1,12 +1,12 @@
 from collections.abc import Iterator
 
+from fastapi import Depends, Header, HTTPException, Request, status
 from natwest_shared.auth.keycloak import KeycloakTokenVerifier
 from natwest_shared.common.exceptions import AuthError, PermissionDenied
 from natwest_shared.db.repositories.user_repository import AppUserRepository
 from natwest_shared.db.session import SessionLocal
 from natwest_shared.schema.auth_schema import AuthContext
 from natwest_shared.services.auth_context_service import AuthContextService
-from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 

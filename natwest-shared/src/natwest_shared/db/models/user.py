@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime
 
-from natwest_shared.db.base import Base
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -15,6 +14,8 @@ from sqlalchemy import (
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from natwest_shared.db.base import Base
 
 
 class AppRole(Base):

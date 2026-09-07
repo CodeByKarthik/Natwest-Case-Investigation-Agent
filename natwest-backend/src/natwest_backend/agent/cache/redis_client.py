@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import redis.asyncio as aioredis
-from natwest_backend.config import settings
 from natwest_shared.utils.logger import get_logger
+
+from natwest_backend.config import settings
 
 logger = get_logger(__name__)
 

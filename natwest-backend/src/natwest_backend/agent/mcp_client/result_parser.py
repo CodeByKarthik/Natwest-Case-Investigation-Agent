@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from natwest_shared.utils.logger import get_logger
 from mcp.types import TextContent
+from natwest_shared.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

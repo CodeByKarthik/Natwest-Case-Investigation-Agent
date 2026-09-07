@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from natwest_backend.agent.shared.state import AgentState
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
+
+from natwest_backend.agent.shared.state import AgentState
 
 
 def create_investigation_finalize_node() -> Any:
