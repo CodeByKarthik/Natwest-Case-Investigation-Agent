@@ -19,7 +19,7 @@ The purpose of this view is to show:
 
 ## Request lifecycle diagram
 
-<img width="1155" height="1764" alt="NatWest-Agent-Userflow" src="https://github.com/user-attachments/assets/daeaf015-4f22-40ce-9f6a-c14019f7ca4a" />
+<img width="754" height="878" alt="NatWest-Agent-Userflow" src="https://github.com/user-attachments/assets/daeaf015-4f22-40ce-9f6a-c14019f7ca4a" />
 
 
 The runtime interaction is built from the following components:
