@@ -75,7 +75,7 @@ def build_graph(
         investigation_tools=[investigation_tool],
     )
     tools_node = create_tool_node(tool_executor)
-    investigation_finalize = create_investigation_finalize_node()
+    investigation_finalize = create_investigation_finalize_node(investigation_tool)
 
     # --- Assemble graph ---
     graph: Any = StateGraph(AgentState)

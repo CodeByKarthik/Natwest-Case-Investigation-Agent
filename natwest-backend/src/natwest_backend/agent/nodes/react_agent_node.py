@@ -59,6 +59,7 @@ def create_agent_node(
         configurable = config.get("configurable", {})
         username = configurable.get("username", "unknown")
         role = configurable.get("role", "unknown")
+        user_id = configurable.get("user_id", "unknown")
 
         category = state.get("category") or IntentCategory.UNCLEAR.value
         category_instructions = CATEGORY_INSTRUCTIONS.get(
@@ -68,6 +69,7 @@ def create_agent_node(
         system_prompt = SYSTEM_PROMPT.format(
             username=username,
             role=role,
+            user_id=user_id,
             category_instructions=category_instructions,
         )
         trimmed = trim_to_turns(list(state["messages"]))

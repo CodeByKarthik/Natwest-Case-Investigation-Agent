@@ -24,6 +24,7 @@ from natwest_shared.db.models.business import (
     Customer,
     NextAction,
 )
+from natwest_shared.db.models.user import AppUser
 from natwest_shared.db.repositories.business_read_repository import (
     BusinessReadRepository,
 )
@@ -138,6 +139,26 @@ class BusinessService:
     def get_next_actions(self, *, case_id: UUID) -> list[NextAction]:
         require_role(self.auth_context, READ_ROLES)
         return self.read_repository.get_next_actions(case_id=case_id)
+
+    def list_staff_users(
+        self,
+        *,
+        name_contains: str | None = None,
+        role: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[AppUser]:
+        """Resolve staff by name or role — used to turn "the fraud
+        investigator" or a colleague's name into a user_id for filtering
+        cases, without ever requiring a raw UUID from the caller."""
+        require_role(self.auth_context, READ_ROLES)
+
+        if role is not None and role not in set(AppRole):
+            raise ValueError(f"Invalid role filter: {role}")
+
+        return self.read_repository.list_staff_users(
+            name_contains=name_contains, role=role, limit=limit, offset=offset
+        )
 
     # ----- Writes (role-dependent) -----
 

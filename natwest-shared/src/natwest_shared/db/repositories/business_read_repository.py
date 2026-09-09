@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from natwest_shared.db.models.business import (
@@ -11,7 +11,7 @@ from natwest_shared.db.models.business import (
     NextAction,
     VulnerabilityRegister,
 )
-from natwest_shared.db.models.user import AppUser
+from natwest_shared.db.models.user import AppRole, AppUser
 
 
 class BusinessReadRepository:
@@ -136,4 +136,33 @@ class BusinessReadRepository:
             .where(NextAction.case_id == case_id)
             .order_by(NextAction.due_date.asc(), NextAction.created_at.desc())
         )
+        return list(self.session.scalars(stmt).all())
+
+    def list_staff_users(
+        self,
+        *,
+        name_contains: str | None = None,
+        role: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[AppUser]:
+        """Resolve staff by partial name/username match and/or role, so
+        callers never need to already know a user's UUID."""
+        stmt = select(AppUser).options(selectinload(AppUser.role))
+        stmt = stmt.where(AppUser.is_active.is_(True))
+
+        if name_contains is not None:
+            pattern = f"%{name_contains}%"
+            stmt = stmt.where(
+                or_(
+                    AppUser.full_name.ilike(pattern),
+                    AppUser.username.ilike(pattern),
+                )
+            )
+        if role is not None:
+            stmt = stmt.join(AppRole, AppUser.role_id == AppRole.id).where(
+                AppRole.name == role
+            )
+
+        stmt = stmt.order_by(AppUser.full_name.asc()).limit(limit).offset(offset)
         return list(self.session.scalars(stmt).all())

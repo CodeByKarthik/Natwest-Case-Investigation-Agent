@@ -185,6 +185,30 @@ def _parse_datetime(value: Any) -> datetime:
     return datetime.min.replace(tzinfo=UTC)
 
 
+# Maps the internal `gathered` dict keys to the MCP tool that produced them,
+# so the raw ground truth can be formatted the same way as ordinary
+# ToolMessages for the evaluation judge.
+_GATHERED_KEY_TO_TOOL = {
+    "case_data": "get_case_details",
+    "customer_data": "get_customer_profile",
+    "accounts_data": "get_customer_accounts",
+    "related_cases_data": "list_cases",
+    "timeline_data": "get_case_timeline",
+    "next_actions_data": "get_next_actions",
+}
+
+
+def _format_gathered_for_eval(gathered: dict[str, str]) -> str:
+    """Render the raw gathered MCP data as ground truth for the evaluation
+    judge, in the same `[tool_name]\ncontent` shape used for ToolMessages
+    on the operational-query path."""
+    sections = [
+        f"[{_GATHERED_KEY_TO_TOOL.get(key, key)}]\n{value}"
+        for key, value in gathered.items()
+    ]
+    return "\n\n".join(sections)
+
+
 class CaseInvestigationWorkflow:
     """Deterministic data gathering (steps 1-6) followed by LLM reasoning
     (steps 7-9) producing a structured investigation report."""
@@ -192,6 +216,10 @@ class CaseInvestigationWorkflow:
     def __init__(self, connection: MCPConnection, llm: BaseChatModel) -> None:
         self._connection = connection
         self._llm = llm
+        # Raw MCP data gathered during the most recent execute() call,
+        # formatted for the evaluation judge. Populated even on error
+        # reports (empty string) so callers can always read it safely.
+        self.last_tool_data: str = ""
 
     # ------------------------------------------------------------------
     # Public entry point
@@ -219,6 +247,7 @@ class CaseInvestigationWorkflow:
 
         case = await self._call_tool("get_case_details", case_args)
         if not case:
+            self.last_tool_data = ""
             return self._error_report("Case not found")
 
         case_id = case.get("id")
@@ -258,6 +287,9 @@ class CaseInvestigationWorkflow:
                 _serialise_for_prompt(next_actions), default=str
             ),
         }
+        # Ground truth for the evaluation judge — stored before the LLM
+        # reasoning steps run, so it is available even if step 7-9 fail.
+        self.last_tool_data = _format_gathered_for_eval(gathered)
 
         # --- Step 7: risk indicators (LLM) ---
         risk_indicators, step7_error = await self._run_findings_step(

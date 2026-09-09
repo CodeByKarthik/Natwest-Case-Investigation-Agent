@@ -13,6 +13,7 @@ from .business_tools import (
     get_next_actions,
     list_cases,
     list_customers,
+    list_staff_users,
     manage_next_action,
     update_case_status,
 )
@@ -20,6 +21,7 @@ from .business_tools import (
 TOOLS: list[tuple[Callable[..., Any], ToolAnnotations | None]] = [
     (list_customers, ToolAnnotations(read_only_hint=True)),
     (list_cases, ToolAnnotations(read_only_hint=True)),
+    (list_staff_users, ToolAnnotations(read_only_hint=True)),
     (get_customer_profile, ToolAnnotations(read_only_hint=True)),
     (get_customer_accounts, ToolAnnotations(read_only_hint=True)),
     (get_case_details, ToolAnnotations(read_only_hint=True)),

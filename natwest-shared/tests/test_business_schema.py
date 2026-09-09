@@ -14,7 +14,7 @@ from natwest_shared.schema.business_schema import (
     NextActionRead,
 )
 
-NOW = datetime(2026, 9, 5, 12, 0, tzinfo=UTC)
+NOW = datetime.now(UTC)
 
 
 def _customer() -> Customer:

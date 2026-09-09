@@ -6,6 +6,7 @@ from fastmcp.exceptions import ToolError
 from natwest_shared.common.exceptions import PermissionDenied
 from natwest_shared.schema.business_schema import (
     AccountRead,
+    AppUserRead,
     CaseEventRead,
     CaseRead,
     CustomerRead,
@@ -57,6 +58,35 @@ async def list_customers(
     except (ValueError, PermissionDenied) as exc:
         _raise_as_tool_error(exc)
     return [CustomerRead.from_customer(customer) for customer in customers]
+
+
+async def list_staff_users(
+    name_contains: Annotated[
+        str | None,
+        Field(
+            description="Case-insensitive partial match on staff full name or username"
+        ),
+    ] = None,
+    role: Annotated[
+        str | None,
+        Field(description="Filter: customer_support, fraud_investigator, case_manager"),
+    ] = None,
+    limit: Annotated[int, Field(ge=1, le=100)] = 50,
+    offset: Annotated[int, Field(ge=0)] = 0,
+    *,
+    service: BusinessService = Depends(get_business_service),
+) -> list[AppUserRead]:
+    """Resolve a colleague or role to a user_id — e.g. "fraud investigator"
+    or a name like "Alex" — for use as assigned_user_id in list_cases.
+    Never ask the user for a raw UUID; look it up here first."""
+    business_service = cast(BusinessService, service)
+    try:
+        staff = business_service.list_staff_users(
+            name_contains=name_contains, role=role, limit=limit, offset=offset
+        )
+    except (ValueError, PermissionDenied) as exc:
+        _raise_as_tool_error(exc)
+    return [AppUserRead.from_user(user) for user in staff]
 
 
 async def list_cases(

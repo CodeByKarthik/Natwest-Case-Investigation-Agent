@@ -116,7 +116,7 @@ class Scenario:
 
 
 SCENARIOS: list[Scenario] = [
-    # ----- customer_support (5) -----
+    # ----- customer_support (4) -----
     Scenario(
         scenario_id="S1",
         name="Read: browse open cases",

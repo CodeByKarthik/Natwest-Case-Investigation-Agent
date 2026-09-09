@@ -60,6 +60,12 @@ class InvestigationWorkflowTool(BaseTool):
     connection: Any
     llm: Any
 
+    # Raw MCP data gathered by the most recent workflow run, formatted for
+    # the evaluation judge. Read by the finalize node after the tool call
+    # completes and copied into AgentState.skill_context — it never reaches
+    # the LLM, so this is safe to keep on the tool instance.
+    last_tool_data: str = ""
+
     model_config = {"arbitrary_types_allowed": True}
 
     def _run(self, **kwargs: Any) -> str:
@@ -73,6 +79,7 @@ class InvestigationWorkflowTool(BaseTool):
             llm=self.llm,
         )
         report = await workflow.execute(workflow_input)
+        self.last_tool_data = workflow.last_tool_data
         return render_report_markdown(report)
 
 

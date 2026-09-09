@@ -143,6 +143,7 @@ def test_registry_exposes_expected_natwest_tool_names() -> None:
     expected = {
         "list_customers",
         "list_cases",
+        "list_staff_users",
         "get_customer_profile",
         "get_customer_accounts",
         "get_case_details",
